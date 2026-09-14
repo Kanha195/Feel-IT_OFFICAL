@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feel It — Guided Motorbike Journeys Across Nepal</title>
+  <meta name="description" content="Feel It pairs solo travelers with local riders for guided motorbike tours across Nepal — Pokhara's lake rim, the Kathmandu Valley ridgeline, and the Mustang desert crossing.">
+  <meta property="og:title" content="Feel It — Guided Motorbike Journeys Across Nepal">
+  <meta property="og:description" content="Guided motorbike tours across Nepal, led by named local riders. Browse routes, pick a date, and book securely.">
+  <meta property="og:type" content="website">
+  <meta propsupabase login
+  supabase init
+  supabase link --project-ref gsjkexvchfozviqllpvqerty="og:image" content="assets/logo-full.png">
+  <meta name="theme-color" content="#0f172a">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Leaflet Maps CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="#top" class="brand">
+      <img src="assets/logo-icon.png" alt="Feel It logo" style="height:44px;width:auto;display:block;" onerror="this.onerror=null; this.replaceWith(Object.assign(document.createElement('span'), {className:'display', style:'font-size:26px;color:var(--primary);', innerText:'FEEL IT'}));">
+      <span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#tours">Tours</a>
+      <a href="#map">Map</a>
+      <a href="#how">How it works</a>
+      <a href="#safety">Safety</a>
+      <a href="#pay">Payment</a>
+      <a href="#contact">Contact</a>
+      <a href="#guides">For guides</a>
+      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+      <button class="btn btn-outline" id="authNavBtn" onclick="openAuthModal()">Login / Account</button>
+      <button class="menu-btn" id="menuBtn" onclick="toggleMobileMenu()" aria-label="Open menu" title="Menu">☰</button>
+    </div>
+  </div>
+  <nav class="mobile-menu" id="mobileMenu">
+    <a href="#tours" onclick="closeMobileMenu()">Tours</a>
+    <a href="#map" onclick="closeMobileMenu()">Map</a>
+    <a href="#how" onclick="closeMobileMenu()">How it works</a>
+    <a href="#safety" onclick="closeMobileMenu()">Safety</a>
+    <a href="#pay" onclick="closeMobileMenu()">Payment</a>
+    <a href="#contact" onclick="closeMobileMenu()">Contact</a>
+    <a href="#guides" onclick="closeMobileMenu()">For guides</a>
+    <a href="#" onclick="openAuthModal(); closeMobileMenu();">Login / Account</a>
+  </nav>
+</header>
+
+<section class="hero" id="top">
+  <svg viewBox="0 0 1080 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="0,320 180,180 340,300 520,140 680,300 860,200 1080,320 1080,500 0,500" fill="#0f172a" opacity="0.8"/>
+    <polygon points="0,380 220,260 420,360 640,240 860,360 1080,270 1080,500 0,500" fill="#1e293b" opacity="0.8"/>
+    <path d="M -50 480 C 200 380, 350 500, 550 400 S 900 340, 1150 440" stroke="#22d3ee" stroke-width="4" fill="none" stroke-dasharray="4 16" stroke-linecap="round" opacity="0.8"/>
+  </svg>
+  <div class="hero-inner">
+    <div class="hero-tag">Guided motorbike tours · Nepal</div>
+    <h1>Feel the road.<br>Not just the window.</h1>
+    <p>Feel It pairs solo travelers with local riders who know Nepal's high roads — Pokhara's lake rim, the Kathmandu Valley ridgeline, the Mustang desert crossing. No tinted glass, no fixed itinerary. Just you, a rider who knows the way, and the road under you.</p>
+    <div class="hero-ctas">
+      <a href="#tours" class="btn btn-primary">Browse tours</a>
+      <a href="#guides" class="btn btn-outline">I'm a local guide</a>
+    </div>
+  </div>
+</section>
+
+<section id="tours">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Find your route</h2>
+      <p>Every tour is led by a named local rider. Filter by region to see what's running near you.</p>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="tourGrid"></div>
+  </div>
+</section>
+
+<section id="map" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Where we ride</h2>
+      <p>Every region and dynamic destination added via our admin control panel.</p>
+    </div>
+    <div id="tourMap"></div>
+  </div>
+</section>
+
+<section id="how" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>How a booking runs</h2>
+      <p>Three stops between deciding and being on the road.</p>
+    </div>
+    <div class="milestones">
+      <div class="milestone"><span class="km">0</span><h3>Pick a route</h3><p>Compare region, distance and what's included, then check open dates.</p></div>
+      <div class="milestone"><span class="km">1</span><h3>Book & pay</h3><p>Choose Bank or eSewa, scan the QR, and submit your transaction reference.</p></div>
+      <div class="milestone"><span class="km">2</span><h3>Get your rider</h3><p>Our team verifies your payment and assigns a rider — their details appear in My Account once confirmed.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="safety" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Rider Safety & Protocols</h2>
+      <p>Your security on Nepal's high-altitude and winding terrain is our absolute priority.</p>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
+      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
+        <h3 style="color:var(--primary);margin-bottom:8px;">Certified Local Pilots</h3>
+        <p style="font-size:14px;color:var(--ink-soft);">Every companion rider undergoes rigorous background screening, holding extensive documented experience on Himalayan gravel tracks, monsoon mud paths, and high mountain passes.</p>
+      </div>
+      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
+        <h3 style="color:var(--primary);margin-bottom:8px;">Top-Tier Gear Standards</h3>
+        <p style="font-size:14px;color:var(--ink-soft);">DOT/ECE-approved full-face helmets, reinforced abrasion jackets, knee guards, and communication headsets are supplied fresh for every individual journey.</p>
+      </div>
+      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
+        <h3 style="color:var(--primary);margin-bottom:8px;">Emergency Route Protocols</h3>
+        <p style="font-size:14px;color:var(--ink-soft);">Our rides maintain satellite-enabled check-ins for remote passes like Mustang and Manang, backed by localized medical evacuation logistics partners.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pay" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Two ways to pay</h2>
+      <p>Pick Bank Transfer or eSewa when you check out — you'll scan the correct QR and enter your transaction reference right there.</p>
+    </div>
+    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:stretch;">
+      <div class="form-card" style="flex:1;min-width:240px;">
+        <h3 style="margin-bottom:10px;">🏦 Bank Transfer</h3>
+        <p style="font-size:14px;color:var(--ink-soft);">Pay directly from any mobile banking app to our Laxmi Sunrise savings account. Your bank's app-generated QR or transfer reference works as your proof of payment.</p>
+      </div>
+      <div class="form-card" style="flex:1;min-width:240px;">
+        <h3 style="margin-bottom:10px;">📱 eSewa</h3>
+        <p style="font-size:14px;color:var(--ink-soft);">Scan & pay instantly using the eSewa app. Your eSewa transaction ID is all our team needs to verify the payment.</p>
+      </div>
+    </div>
+    <div style="margin-top:24px;">
+      <span class="badge" style="display:inline-block;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;">Every payment is manually verified before your rider is assigned</span>
+    </div>
+  </div>
+</section>
+
+<section id="guides">
+  <div class="wrap">
+    <div class="guide-banner">
+      <div>
+        <h2>Ride these roads for a living?</h2>
+        <p>List your tour, set your own dates and price, and take bookings from travelers before they even land in Nepal.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openGuideForm()">Apply as a guide</button>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Contact us</h2>
+      <p>Questions before you book? Reach us directly or send a message.</p>
+    </div>
+    <div style="display:flex;gap:40px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;font-size:15px;color:var(--ink-soft);line-height:1.9;">
+        <div><strong style="color:var(--ink);">Email:</strong> <span id="contactEmailDisplay"></span></div>
+        <div><strong style="color:var(--ink);">Phone:</strong> <span id="contactPhoneDisplay"></span></div>
+        <div><strong style="color:var(--ink);">WhatsApp:</strong> <a id="contactWaLink" href="#" target="_blank" rel="noopener">Message us</a></div>
+        <div><strong style="color:var(--ink);">Instagram:</strong> <a id="contactIgLink" href="#" target="_blank" rel="noopener">Message us on Instagram</a></div>
+        <div><strong style="color:var(--ink);">Based in:</strong> <span id="contactAddressDisplay"></span></div>
+      </div>
+      <div class="form-card" style="flex:2;min-width:280px;">
+        <div class="field"><label for="ctName">Your name</label><input id="ctName" name="name"></div>
+        <div class="field"><label for="ctEmail">Your email</label><input id="ctEmail" type="email" name="email"></div>
+        <div class="field"><label for="ctMessage">Message</label><textarea id="ctMessage" name="message" maxlength="600"></textarea></div>
+        <button class="btn btn-primary" style="width:100%;" onclick="submitContact()">Send message</button>
+        <p class="form-note" id="contactNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <img src="assets/logo-full.png" alt="Feel It — Himalayan Motorcycle Tours" style="height:110px;width:auto;margin-bottom:10px;" onerror="this.onerror=null; this.replaceWith(Object.assign(document.createElement('div'), {className:'display', style:'font-size:24px;color:var(--primary);margin-bottom:6px;', innerText:'FEEL IT'}));">
+      <p>A guided motorbike tour booking platform for Nepal. Managed dynamically via Supabase backend.</p>
+    </div>
+    <div>
+      <p style="font-size:12px;margin:0;">&copy; 2026 Feel It Nepal. All rights reserved. <br><a href="#" onclick="openTermsModal(); return false;" style="color:var(--primary);text-decoration:underline;">Terms & Conditions</a></p>
+    </div>
+  </div>
+</footer>
+
+<!-- Modal Overlay Container -->
+<div class="overlay hidden" id="overlay" role="dialog" aria-modal="true">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Floating WhatsApp / Instagram buttons — always visible, one tap to
+     start a direct chat on either platform. Hrefs are filled in by
+     initContactDisplay() in script.js so CONTACT_INFO stays the single
+     source of truth. -->
+<div class="floating-social" id="floatingSocial">
+  <a id="floatWaLink" class="floating-social-btn wa" href="#" target="_blank" rel="noopener" aria-label="Message us on WhatsApp" title="Message us on WhatsApp">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.26-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.7-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.24-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.17 0-.43.06-.66.31-.23.25-.86.84-.86 2.05 0 1.21.88 2.38 1 2.54.12.17 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.52.59.19 1.12.16 1.54.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29z"/></svg>
+  </a>
+  <a id="floatIgLink" class="floating-social-btn ig" href="#" target="_blank" rel="noopener" aria-label="Message us on Instagram" title="Message us on Instagram">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+  </a>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Leaflet Map JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<!-- Main Logic JavaScript -->
+<script src="script.js"></script>
+</body>
+</html>
