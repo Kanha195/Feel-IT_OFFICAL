@@ -22,6 +22,35 @@ const CONTACT_INFO = {
 // never match any real SHA-256 output — admin login was silently broken.
 const ADMIN_EMAIL = 'admin@feelit.com';
 const ADMIN_PASS_HASH = '1bc57fec7b82137e1cfeefed41c9a9f5ded5e69de2a397151c504e139bffd324';
+ctEmail').value.trim();
+  const message = document.getElementById('ctMessage').value.trim();
+
+  if(!name || !email || !message){ showToast('Please complete all fields.', 'error'); return; }
+  if(!isValidEmail(email)){ showToast('Please enter a valid email.', 'error'); return; }
+
+  const btn = document.querySelector('#contact .btn-primary');
+  const restoreBtn = setBusy(btn, 'Sending...');
+
+  try {
+    const { error } = await supabaseClient.from('contacts').insert([{ name, email, message }]);
+    if (error) throw error;
+    
+    showToast('Message sent! We will get back to you soon.', 'success');
+    document.getElementById('ctName').value = '';
+    document.getElementById('ctEmail').value = '';
+    document.getElementById('ctMessage').value = '';
+    
+    // Optional: Send email notification
+    await sendEmailNotification(EMAILJS_CONFIG.contactTemplateId, {
+      from_name: name, reply_to: email, message: message
+    });
+  } catch(e) {
+    console.error('Contact insert error:', e);
+    showToast('Failed to send message. Please try again.', 'error');
+  }
+  
+  restoreBtn();
+}
 
 // Payment methods customers can pay with. QR images live in /assets.
 // These are only ever shown once a date + traveler count has been chosen,
