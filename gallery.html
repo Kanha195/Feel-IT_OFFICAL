@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="alternate icon" type="image/png" href="assets/logo-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Photo Gallery — Feel It Nepal</title>
+  <meta name="description" content="Photographs from Feel It Nepal's guided motorbike rides — Pokhara, the Kathmandu Valley rim and the Mustang desert crossing.">
+  <meta name="theme-color" content="#0f172a">
+  <title>Gallery — Feel It Nepal</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
   <!-- Supabase JS SDK -->
@@ -18,16 +22,39 @@
 </head>
 <body>
 
+<div class="page-loader" id="pageLoader">
+  <div class="loader-stage">
+    <svg class="loader-bike" viewBox="0 0 200 90" aria-hidden="true">
+      <g class="speed-lines">
+        <line x1="0" y1="26" x2="34" y2="26"/>
+        <line x1="10" y1="40" x2="52" y2="40"/>
+        <line x1="0" y1="54" x2="30" y2="54"/>
+      </g>
+      <g class="bike-body">
+        <circle class="wheel" cx="58" cy="60" r="18"/>
+        <circle class="wheel" cx="146" cy="60" r="18"/>
+        <path class="frame" d="M58 60 L88 32 L112 32 L130 54 L146 60 M88 32 L100 60 M112 32 L106 54 L130 54"/>
+        <path class="frame" d="M70 32 L88 32"/>
+        <path class="frame" d="M130 54 L140 32"/>
+        <circle class="headlight" cx="150" cy="42" r="4"/>
+      </g>
+    </svg>
+    <div class="loader-road"><span></span></div>
+    <div class="loader-word">FEEL IT</div>
+    <div class="loader-sub">loading the gallery</div>
+  </div>
+</div>
+
 <header>
   <div class="wrap nav">
     <a href="index.html" class="brand">
-      <img src="logo.svg" width="38" height="38" alt="Feel It Nepal logo" class="brand-logo">
+      <img src="logo.svg" width="38" height="38" alt="Feel It Nepal logo" class="brand-logo" onerror="this.onerror=null;this.src='assets/logo-icon.png'">
       <span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span>
     </a>
     <div class="nav-links">
       <a href="index.html#tours">Tours</a>
       <a href="index.html#map">Map</a>
-      <a href="gallery.html" style="color:var(--primary);">Gallery</a>
+      <a href="gallery.html" class="nav-current" aria-current="page">Gallery</a>
       <a href="index.html#how">How it works</a>
       <a href="index.html#contact">Contact</a>
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
@@ -45,38 +72,60 @@
   </nav>
 </header>
 
-<section class="hero" style="padding-bottom:60px;">
-  <svg viewBox="0 0 1080 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-    <polygon points="0,320 180,180 340,300 520,140 680,300 860,200 1080,320 1080,500 0,500" fill="#0f172a" opacity="0.8"/>
-    <polygon points="0,380 220,260 420,360 640,240 860,360 1080,270 1080,500 0,500" fill="#1e293b" opacity="0.8"/>
-  </svg>
-  <div class="hero-inner" style="padding-bottom:0;">
-    <div class="hero-tag">From the road</div>
-    <h1 style="font-size:clamp(36px,6vw,64px);">Photo Gallery</h1>
-    <p>Real moments from real rides across Nepal — added straight from our team's Google Drive.</p>
+<section class="gallery-hero">
+  <div class="wrap">
+    <a href="index.html" class="back-home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back to home
+    </a>
+    <h1>Photo gallery</h1>
+    <p>Photographs from the rides themselves — the passes, the tea stops, and the bikes that got us there.</p>
+    <div class="gallery-toolbar">
+      <div class="filters" id="galleryFilter"></div>
+      <span class="gallery-count" id="galleryCount"></span>
+    </div>
   </div>
 </section>
 
-<section>
+<section class="gallery-section">
   <div class="wrap">
-    <div class="gallery-grid" id="photoGalleryGrid">
-      <div class="empty-state">Loading photos…</div>
+    <div class="gallery-grid" id="photoGalleryGrid"></div>
+  </div>
+</section>
+
+<section class="gallery-cta">
+  <div class="wrap">
+    <div class="guide-banner">
+      <div>
+        <h2>Want to be in the next one?</h2>
+        <p>Pick a route, and your rider takes the photos while you ride.</p>
+      </div>
+      <a class="btn btn-primary" href="index.html#tours">Browse tours</a>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <img src="logo.svg" width="30" height="30" alt="Feel It Nepal logo">
+    <div class="footer-brand">
+      <div class="footer-mark">
+        <img src="logo.svg" width="34" height="34" alt="Feel It Nepal logo" onerror="this.onerror=null;this.src='assets/logo-icon.png'">
         <div class="display">FEEL IT</div>
       </div>
-      <p>A guided motorbike tour booking platform for Nepal. Managed dynamically via Supabase backend.</p>
-      <a href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" class="footer-instagram">📷 @feelitoffical on Instagram</a>
+      <p>Guided motorbike journeys across Nepal, run with local riders who know the roads.</p>
+      <div class="footer-socials">
+        <a href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" class="social-btn social-instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
+          <span>@feelitoffical</span>
+        </a>
+      </div>
     </div>
-    <div>
-      <p style="font-size:12px;margin:0;"><a href="index.html" style="color:var(--primary);text-decoration:underline;">&larr; Back to home</a></p>
+    <div class="footer-links">
+      <a href="index.html#tours">Tours</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="index.html#safety">Safety</a>
+      <a href="index.html#contact">Contact</a>
+      <p class="footer-copy">&copy; 2026 Feel It Nepal</p>
     </div>
   </div>
 </footer>
