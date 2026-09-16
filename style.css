@@ -412,7 +412,10 @@ footer .footer-instagram:hover{text-decoration:underline;}
 .admin-photo-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;gap:8px;}
 .admin-photo-card img{width:100%;height:110px;object-fit:cover;border-radius:6px;background:var(--paper);}
 .admin-photo-caption{font-size:12px;color:var(--ink-soft);}
-.img-broken{display:none;}
+/* This used to be a bare `.img-broken{display:none}`, which would have
+   hidden any CONTAINER that got the class — including a whole gallery card.
+   Only the failed <img> itself is hidden now. */
+.img-failed{display:none !important;}
 
 /* ---------------- Public gallery page ---------------- */
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
@@ -446,4 +449,285 @@ footer .footer-instagram:hover{text-decoration:underline;}
 .wa-float-btn:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 10px 26px rgba(0,0,0,0.4);}
 @media(max-width:480px){
   .wa-float-btn{bottom:16px;right:16px;width:50px;height:50px;}
+}
+
+/* =========================================================================
+   PAGE LOADER — speeding bike
+   Three-part failsafe: JS hides it on data-load, JS hides it on window
+   load, and the `loaderFailsafe` keyframe below hides it at 6s no matter
+   what. A loader that can stick is worse than no loader.
+   ========================================================================= */
+.page-loader{
+  position:fixed;inset:0;z-index:999;background:var(--hero-gradient);
+  display:flex;align-items:center;justify-content:center;
+  animation:loaderFailsafe .45s ease 5.5s forwards;
+}
+.page-loader.loader-done{opacity:0;visibility:hidden;transition:opacity .5s ease,visibility .5s ease;}
+@keyframes loaderFailsafe{to{opacity:0;visibility:hidden;pointer-events:none;}}
+
+.loader-stage{width:min(320px,80vw);text-align:center;}
+.loader-bike{width:100%;height:auto;color:#f8fafc;overflow:visible;animation:bikeBob 0.5s ease-in-out infinite alternate;}
+.loader-bike .wheel{fill:none;stroke:#f8fafc;stroke-width:4;transform-box:fill-box;transform-origin:center;animation:wheelSpin .5s linear infinite;}
+.loader-bike .frame{fill:none;stroke:#f8fafc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;}
+.loader-bike .headlight{fill:#22d3ee;animation:headlightPulse 1s ease-in-out infinite;}
+.loader-bike .speed-lines line{stroke:#22d3ee;stroke-width:3;stroke-linecap:round;opacity:0;}
+.loader-bike .speed-lines line:nth-child(1){animation:whoosh .7s linear infinite;}
+.loader-bike .speed-lines line:nth-child(2){animation:whoosh .7s linear .2s infinite;}
+.loader-bike .speed-lines line:nth-child(3){animation:whoosh .7s linear .4s infinite;}
+
+@keyframes wheelSpin{to{transform:rotate(360deg);}}
+@keyframes bikeBob{from{transform:translateY(0);}to{transform:translateY(-3px);}}
+@keyframes headlightPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes whoosh{0%{opacity:0;transform:translateX(24px);}30%{opacity:.9;}100%{opacity:0;transform:translateX(-40px);}}
+
+.loader-road{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin:10px 0 22px;position:relative;}
+.loader-road span{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,#22d3ee 0 18px,transparent 18px 44px);
+  animation:roadRun .6s linear infinite;
+}
+@keyframes roadRun{to{transform:translateX(-44px);}}
+
+.loader-word{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#22d3ee;letter-spacing:4px;line-height:1;}
+.loader-sub{font-size:12px;color:#94a3b8;letter-spacing:1.5px;margin-top:4px;}
+
+/* Inline loader used while a section fetches from Supabase */
+.inline-loader{
+  display:flex;align-items:center;gap:12px;padding:26px 0;color:var(--ink-soft);font-size:14px;
+}
+.inline-bike{width:54px;height:auto;color:var(--primary);flex-shrink:0;animation:bikeBob .5s ease-in-out infinite alternate;}
+.inline-bike circle{transform-box:fill-box;transform-origin:center;animation:wheelSpin .5s linear infinite;}
+
+/* =========================================================================
+   BRAND / SOCIAL BUTTONS
+   Real vector glyphs replace the camera emoji that was standing in for the
+   Instagram logo.
+   ========================================================================= */
+.social-btn{
+  display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+  padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;
+  border:1px solid var(--line);color:var(--ink);background:var(--paper);transition:.2s;
+}
+.social-btn svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;}
+.social-btn:hover{transform:translateY(-1px);}
+.social-whatsapp{border-color:rgba(37,211,102,.45);color:#25D366;}
+.social-whatsapp:hover{background:rgba(37,211,102,.12);border-color:#25D366;}
+.social-instagram{border-color:rgba(225,48,108,.45);color:#e1306c;}
+.social-instagram:hover{background:rgba(225,48,108,.12);border-color:#e1306c;}
+
+/* =========================================================================
+   FOOTER
+   ========================================================================= */
+footer .wrap{align-items:flex-start;gap:40px;}
+.footer-brand{max-width:360px;}
+.footer-mark{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.footer-mark img{display:block;object-fit:contain;}
+.footer-socials{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;}
+footer .social-btn{background:transparent;}
+.footer-links{display:flex;flex-direction:column;gap:8px;font-size:14px;}
+.footer-links a{color:var(--ink-soft);text-decoration:none;}
+.footer-links a:hover{color:var(--primary);}
+.footer-copy{font-size:12px;margin:12px 0 0;color:var(--ink-soft);}
+
+/* =========================================================================
+   CONTACT DETAILS
+   ========================================================================= */
+.contact-details{flex:1;min-width:230px;display:flex;flex-direction:column;gap:14px;font-size:15px;}
+.contact-details > div{display:flex;flex-direction:column;gap:2px;}
+.contact-details strong{color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;}
+.contact-details a{color:var(--primary);text-decoration:none;}
+.contact-details a:hover{text-decoration:underline;}
+.contact-socials{flex-direction:row !important;gap:10px !important;flex-wrap:wrap;margin-top:4px;}
+.contact-socials a{text-decoration:none;}
+.contact-socials a:hover{text-decoration:none;}
+
+/* =========================================================================
+   TOUR CARDS — photo is a real <img> now, so a bad link can retry
+   ========================================================================= */
+.card-art{position:relative;overflow:hidden;background:rgba(34,211,238,.08);}
+.card-photo{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;}
+.card:hover .card-photo{transform:scale(1.04);}
+.card-art-fallback{
+  display:none;position:absolute;inset:0;align-items:center;justify-content:center;
+  color:var(--ink-soft);font-size:13px;background:var(--paper);
+}
+.card-art.img-broken .card-art-fallback{display:flex;}
+.card-rating{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rating-count{font-size:13px;color:var(--ink-soft);}
+.stars{letter-spacing:1px;font-size:15px;line-height:1;}
+.star-on{color:#f59e0b;}
+.star-off{color:var(--line);}
+
+/* Photo at the top of the tour detail modal */
+.modal-hero{
+  position:relative;margin:-36px -36px 20px;height:220px;overflow:hidden;
+  border-radius:var(--radius) var(--radius) 0 0;background:var(--bg);
+}
+.modal-hero img{width:100%;height:100%;object-fit:cover;display:block;}
+.modal-hero.img-broken{display:none;}
+
+/* =========================================================================
+   REVIEWS
+   ========================================================================= */
+.review-block{margin-top:28px;border-top:1px solid var(--line);padding-top:22px;}
+.review-heading{font-size:26px;margin:0 0 14px;}
+.review-list{display:flex;flex-direction:column;gap:12px;margin-bottom:18px;}
+.review-item{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+.review-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.review-item p{margin:0;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+.review-empty{font-size:14px;color:var(--ink-soft);margin:0 0 14px;}
+.review-cta{width:100%;}
+.review-form{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+.review-form label{display:block;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.star-picker{display:flex;gap:4px;margin-bottom:12px;}
+.star-pick{background:none;border:none;font-size:26px;line-height:1;color:var(--line);padding:0 2px;transition:color .15s;}
+.star-pick:hover,.star-pick.star-on{color:#f59e0b;}
+.review-form textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
+  font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink);resize:vertical;margin-bottom:12px;
+}
+.review-form textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 10px var(--primary-tint);}
+.admin-review-row{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+.admin-review-row p{font-size:14px;color:var(--ink-soft);margin:6px 0 10px;}
+.admin-review-meta{font-size:12px;color:var(--ink-soft);}
+
+/* =========================================================================
+   GALLERY PAGE
+   ========================================================================= */
+.gallery-hero{background:var(--hero-gradient);padding:34px 0 40px;border-bottom:1px solid var(--line);}
+.gallery-hero h1{font-size:clamp(40px,7vw,64px);margin:18px 0 10px;color:#fff;}
+.gallery-hero p{color:#94a3b8;max-width:520px;margin:0;font-size:16px;}
+.back-home{
+  display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+  color:#22d3ee;font-size:14px;font-weight:600;padding:9px 16px 9px 12px;
+  border:1px solid rgba(34,211,238,.4);border-radius:999px;transition:.2s;
+}
+.back-home svg{width:17px;height:17px;transition:transform .2s;}
+.back-home:hover{background:rgba(34,211,238,.12);border-color:#22d3ee;}
+.back-home:hover svg{transform:translateX(-3px);}
+.gallery-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:24px;}
+.gallery-toolbar .filters{margin-bottom:0;}
+.gallery-count{font-size:13px;color:#94a3b8;letter-spacing:.4px;}
+.gallery-section{padding:48px 0 20px;}
+.gallery-cta{padding-top:10px;}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;}
+.gallery-card{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;transition:.25s;}
+.gallery-card:hover{border-color:var(--primary);box-shadow:0 8px 28px rgba(0,0,0,.35);}
+.gallery-open{
+  display:block;width:100%;padding:0;border:none;background:var(--bg);
+  position:relative;line-height:0;cursor:zoom-in;
+}
+.gallery-open img{width:100%;height:230px;object-fit:cover;display:block;transition:transform .5s ease;}
+.gallery-card:hover .gallery-open img{transform:scale(1.05);}
+.gallery-fail{
+  display:none;height:230px;align-items:center;justify-content:center;
+  color:var(--ink-soft);font-size:13px;line-height:1.4;padding:16px;text-align:center;
+}
+.gallery-card.img-broken .gallery-fail{display:flex;}
+.gallery-caption{padding:13px 15px;font-size:14px;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+.gallery-region{color:var(--primary);font-size:11px;text-transform:uppercase;letter-spacing:.7px;flex-shrink:0;}
+
+/* Lightbox */
+.lightbox{
+  position:fixed;inset:0;z-index:300;background:rgba(2,6,23,.94);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:40px 60px;
+}
+.lightbox.open{display:flex;}
+.lightbox-figure{margin:0;max-width:100%;max-height:100%;display:flex;flex-direction:column;gap:12px;align-items:center;}
+.lightbox-figure img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:var(--radius);display:block;}
+.lightbox-figure figcaption{color:#e2e8f0;font-size:14px;text-align:center;display:flex;gap:10px;align-items:baseline;justify-content:center;flex-wrap:wrap;}
+.lightbox-figure figcaption span{color:#22d3ee;font-size:11px;text-transform:uppercase;letter-spacing:.7px;}
+.lightbox-close,.lightbox-nav{
+  position:absolute;background:rgba(15,23,42,.8);border:1px solid rgba(148,163,184,.3);
+  color:#f8fafc;border-radius:50%;width:44px;height:44px;font-size:26px;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:.2s;
+}
+.lightbox-close:hover,.lightbox-nav:hover{background:var(--primary);color:#0f172a;border-color:var(--primary);}
+.lightbox-close{top:20px;right:20px;}
+.lightbox-prev{left:16px;top:50%;transform:translateY(-50%);}
+.lightbox-next{right:16px;top:50%;transform:translateY(-50%);}
+
+/* =========================================================================
+   ADMIN POLISH
+   ========================================================================= */
+.admin-section-intro{font-size:13px;color:var(--ink-soft);margin-bottom:16px;line-height:1.6;}
+.admin-tour-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.admin-tour-thumb{
+  width:76px;height:56px;border-radius:6px;overflow:hidden;flex-shrink:0;
+  background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+}
+.admin-tour-thumb img{width:100%;height:100%;object-fit:cover;}
+.admin-tour-thumb-empty{font-size:10px;color:var(--ink-soft);text-align:center;}
+.admin-tour-thumb.img-broken::after{content:"!";color:var(--danger);font-weight:700;}
+.admin-tour-card h4{display:flex;flex-direction:column;gap:3px;margin:0;}
+.admin-tour-card h4 span{font-family:'Work Sans',sans-serif;font-size:12px;color:var(--ink-soft);letter-spacing:.4px;text-transform:uppercase;}
+.admin-actions{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+.admin-photo-card{position:relative;}
+.admin-photo-fail{display:none;font-size:11px;color:var(--danger);line-height:1.4;}
+.admin-photo-card.img-broken .admin-photo-fail{display:block;}
+
+.btn-danger{background:transparent;border:2px solid var(--danger);color:var(--danger);}
+.btn-danger:hover{background:rgba(239,68,68,.12);box-shadow:0 0 14px rgba(239,68,68,.3);}
+.btn-sm{padding:.45rem 1rem;font-size:13px;}
+
+/* Link + preview pairing used by every "paste an image link" field */
+.link-with-preview{display:flex;gap:8px;align-items:stretch;}
+.link-with-preview input{flex:1;min-width:0;}
+.link-with-preview .btn{white-space:nowrap;padding:.55rem 1.1rem;font-size:14px;}
+.img-preview{margin-top:10px;}
+.img-preview-frame{
+  position:relative;border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;background:var(--bg);max-width:280px;
+}
+.img-preview-frame img{width:100%;max-height:170px;object-fit:cover;display:block;}
+.img-preview-fail{display:none;padding:14px;font-size:12px;color:var(--danger);line-height:1.5;}
+.img-preview-frame.img-broken .img-preview-fail{display:block;}
+.img-preview-note{font-size:12px;color:var(--ink-soft);}
+
+/* =========================================================================
+   FOCUS + MOTION + SMALL SCREENS
+   ========================================================================= */
+.nav-current{color:var(--primary);border-bottom-color:var(--primary) !important;}
+/* The close button can now sit on top of a tour photo, so give it a chip
+   background instead of letting it disappear into a bright image. */
+.modal-close{
+  z-index:3;width:34px;height:34px;border-radius:50%;line-height:1;
+  background:rgba(15,23,42,.65);color:#f8fafc;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);transition:.2s;
+}
+.modal-close:hover{background:var(--primary);color:#0f172a;}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--primary);outline-offset:2px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+  .page-loader{animation:loaderFailsafe .01s linear 1.5s forwards;}
+  .card:hover .card-photo,.gallery-card:hover .gallery-open img{transform:none;}
+}
+
+@media(max-width:720px){
+  footer .wrap{flex-direction:column;gap:28px;}
+  .footer-links{flex-direction:row;flex-wrap:wrap;gap:14px;}
+  .footer-copy{width:100%;margin-top:4px;}
+  .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .gallery-open img,.gallery-fail{height:170px;}
+  .lightbox{padding:20px 12px;}
+  .lightbox-prev{left:6px;}
+  .lightbox-next{right:6px;}
+  .lightbox-close{top:12px;right:12px;}
+  .modal{padding:22px 18px;}
+  .modal-hero{margin:-22px -18px 18px;height:170px;}
+  .modal h2{font-size:30px;}
+  .link-with-preview{flex-direction:column;}
+  .link-with-preview .btn{width:100%;}
+  .admin-tour-head{align-items:flex-start;}
+  .gallery-toolbar{flex-direction:column;align-items:flex-start;gap:10px;}
+}
+
+@media(max-width:480px){
+  .loader-word{font-size:32px;}
+  .contact-socials{flex-direction:column !important;}
+  .contact-socials .social-btn{justify-content:center;}
 }
