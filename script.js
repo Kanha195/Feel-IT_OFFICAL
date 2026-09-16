@@ -387,3 +387,9 @@ window.addEventListener('DOMContentLoaded', () => {
   loadTours();
   renderGallery('All');
 });
+await supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: {
+    redirectTo: 'https://kanha195.github.io/Feel-IT_OFFICAL/'
+  }
+});
