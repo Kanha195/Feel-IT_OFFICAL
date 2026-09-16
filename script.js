@@ -15,34 +15,67 @@ const CONTACT_INFO = {
   instagram: 'feelitoffical' // used exactly as given — double check this matches your real handle
 };
 
-// Turns a normal Google Drive "share" link into a direct, embeddable image
-// URL. Accepts the usual share formats people copy/paste:
-//   https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-//   https://drive.google.com/open?id=FILE_ID
-//   https://drive.google.com/uc?id=FILE_ID  (already converted)
-// Falls back to returning the input untouched if it isn't a Drive link,
-// so plain image URLs (from anywhere) still work fine too.
-// NOTE: the Drive file must be shared as "Anyone with the link" or it will
-// not load on the site.
-function convertDriveLink(url){
-  if(!url) return url;
-  const trimmed = url.trim();
-  const fileMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-  if(fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
-  const openMatch = trimmed.match(/drive\.google\.com\/open\?id=([^&]+)/);
-  if(openMatch) return `https://drive.google.com/uc?export=view&id=${openMatch[1]}`;
-  const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
-  if(trimmed.includes('drive.google.com') && idParamMatch) return `https://drive.google.com/uc?export=view&id=${idParamMatch[1]}`;
-  return trimmed;
+
+
+// Pull the file ID out of any Drive URL shape people actually paste.
+function driveFileId(url){
+  if(!url) return '';
+  const u = String(url).trim();
+  if(!u.includes('drive.google.com') && !u.includes('googleusercontent.com')) return '';
+  const m =
+    u.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/) ||        // /file/d/ID/view
+    u.match(/[?&]id=([a-zA-Z0-9_-]{10,})/)     ||        // ?id=ID / uc?export=view&id=ID
+    u.match(/\/d\/([a-zA-Z0-9_-]{10,})/);                // lh3.../d/ID
+  return m ? m[1] : '';
 }
 
-// SHA-256 Hashed admin passcode.
-// Login with: admin@feelit.com / FeelIt@2026
-// (the ORIGINAL hash in this file before this edit did not actually match
-// its own comment — it was for a different password entirely, so admin
-// login was silently broken. This one is verified to match.)
-// NOTE: this is still a client-side check only — see the security note at
-// the bottom of this file before relying on it for anything real.
+// The URL we actually put in src="". Non-Drive links pass through untouched,
+// so a plain https://…/photo.jpg from anywhere still works fine.
+function imgSrc(url, size = 1600){
+  if(!url) return '';
+  const id = driveFileId(url);
+  if(id) return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
+  return String(url).trim();
+}
+
+// Kept under its old name because other code (and your muscle memory) calls
+// it — but it now produces the working URL shape.
+function convertDriveLink(url){
+  return imgSrc(url);
+}
+
+// Drive occasionally rate-limits one endpoint but not another, so if the
+// first URL fails we quietly try the other two before giving up. Without
+// this, one hiccup = a permanently blank gallery tile.
+function handleImgError(img){
+  const id = img.dataset.driveId || '';
+  const step = Number(img.dataset.imgStep || 0);
+  img.onerror = null;
+  if(id && step === 0){
+    img.dataset.imgStep = '1';
+    img.onerror = () => handleImgError(img);
+    img.src = `https://lh3.googleusercontent.com/d/${id}=w1600`;
+    return;
+  }
+  if(id && step === 1){
+    img.dataset.imgStep = '2';
+    img.onerror = () => handleImgError(img);
+    img.src = `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
+    return;
+  }
+  img.dataset.imgStep = 'failed';
+  img.classList.add('img-failed');
+  const holder = img.closest('[data-img-holder]');
+  if(holder) holder.classList.add('img-broken');
+}
+
+// Single place that builds an <img> for any admin-supplied photo link.
+function imgTag(rawUrl, alt, cls, extra = ''){
+  const id = driveFileId(rawUrl);
+  return `<img src="${esc(imgSrc(rawUrl))}" alt="${esc(alt || '')}"${cls ? ` class="${cls}"` : ''} loading="lazy"` +
+         `${id ? ` data-drive-id="${esc(id)}"` : ''} data-img-step="0" onerror="handleImgError(this)"${extra ? ' ' + extra : ''}>`;
+}
+
 const ADMIN_EMAIL = 'admin@feelit.com';
 const ADMIN_PASS_HASH = '1bc57fec7b82137e1cfeefed41c9a9f5ded5e69de2a397151c504e139bffd324';
 
@@ -109,6 +142,12 @@ async function notifyByEmail(templateId, payload){
 
 function esc(str){
   return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Region names and captions come from the admin panel, so an apostrophe in
+// one would otherwise break out of the inline onclick string.
+function jsArg(str){
+  return esc(String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 
 function fmtNPR(n){
@@ -191,6 +230,8 @@ let pendingBooking = null;
 let leafletMap = null;
 let mapMarkers = [];
 let adminActiveThreadEmail = null; // which customer's conversation the admin has open, if any
+let reviewStats = {};              // { tourId: { sum, count, avg } } — powers the star badges on cards
+let galleryPhotos = [];            // cached gallery rows so the lightbox can page through them
 
 // Overlay Helpers
 function showOverlay() { document.getElementById('overlay')?.classList.remove('hidden'); }
@@ -227,9 +268,15 @@ function closeMobileMenu(){ document.getElementById('mobileMenu')?.classList.rem
 
 /* ---------------- Tour & Map Sync ---------------- */
 function normalizeTour(t){
-  // Supabase rows and seed data may disagree on guidePhone vs guide_phone —
-  // always settle on guide_phone so the rest of the app only has one shape.
-  return { ...t, guide_phone: t.guide_phone || t.guidePhone || '' };
+  // Supabase rows and seed data may disagree on guidePhone vs guide_phone,
+  // and on image_url vs imageUrl — settle on one shape so the rest of the
+  // app never has to care which spelling a given row happens to use.
+  return {
+    ...t,
+    guide_phone: t.guide_phone || t.guidePhone || '',
+    imageUrl: t.image_url || t.imageUrl || '',
+    includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : [])
+  };
 }
 
 async function loadTours(){
@@ -243,9 +290,44 @@ async function loadTours(){
   } catch (e) {
     tours = seedTours.map(normalizeTour);
   }
+  await loadReviewStats();
   renderFilters();
   renderTours();
   initMap();
+}
+
+/* ---------------- Reviews ----------------
+   Every reviews call is wrapped so that if the `reviews` table doesn't
+   exist yet (i.e. you haven't run the SQL), the site carries on exactly as
+   before instead of breaking. Nothing here can take the page down.
+------------------------------------------------------------------------ */
+async function loadReviewStats(){
+  reviewStats = {};
+  try {
+    const { data, error } = await supabaseClient.from('reviews').select('tour_id, rating');
+    if(error || !data) return;
+    data.forEach(r => {
+      const s = reviewStats[r.tour_id] || (reviewStats[r.tour_id] = { sum: 0, count: 0 });
+      s.sum += Number(r.rating) || 0;
+      s.count += 1;
+    });
+    Object.values(reviewStats).forEach(s => { s.avg = s.count ? (s.sum / s.count) : 0; });
+  } catch(e){ /* table not set up yet — reviews simply don't appear */ }
+}
+
+// Renders N filled stars out of 5. Used on cards, in the tour modal and in
+// the admin reviews tab, so the rating always looks the same everywhere.
+function starsHtml(rating){
+  const r = Math.round(Number(rating) || 0);
+  return `<span class="stars" aria-label="${r} out of 5">${
+    [1,2,3,4,5].map(i => `<span class="${i <= r ? 'star-on' : 'star-off'}">★</span>`).join('')
+  }</span>`;
+}
+
+function ratingBadge(tourId){
+  const s = reviewStats[tourId];
+  if(!s || !s.count) return '';
+  return `<div class="card-rating">${starsHtml(s.avg)}<span class="rating-count">${s.avg.toFixed(1)} · ${s.count} review${s.count === 1 ? '' : 's'}</span></div>`;
 }
 
 function renderFilters(){
@@ -275,20 +357,24 @@ function renderTours(){
   if(!el) return;
   if(list.length===0){ el.innerHTML = '<div class="empty-state">No tours in this region yet.</div>'; return; }
 
+  // The photo is now a real <img> rather than a CSS background, so a Drive
+  // link that needs a fallback URL can actually retry (backgrounds can't).
   el.innerHTML = list.map(t=>{
-    const bgStyle = t.imageUrl ? `background-image:url('${esc(t.imageUrl)}');` : `background:rgba(34,211,238,0.1);`;
-    const artContent = t.imageUrl ? '' : `<svg width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#22d3ee"/></svg>`;
+    const art = t.imageUrl
+      ? imgTag(t.imageUrl, t.title, 'card-photo')
+      : `<svg class="card-art-placeholder" width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#22d3ee"/></svg>`;
     return `
-      <div class="card">
-        <div class="card-art" style="${bgStyle}">${artContent}</div>
+      <article class="card">
+        <div class="card-art" data-img-holder>${art}<span class="card-art-fallback">Photo coming soon</span></div>
         <div class="card-body">
           <div class="card-region">${esc(t.region)}</div>
           <h3 class="card-title">${esc(t.title)}</h3>
+          ${ratingBadge(t.id)}
           <div class="card-meta"><span>${esc(t.duration)}</span><span>Guide: ${esc(t.guide)}</span></div>
           <div class="card-price">${fmtNPR(t.price)} <small>/ person</small></div>
-          <button class="btn btn-primary" onclick="openTour('${esc(t.id)}')">View & book</button>
+          <button class="btn btn-primary" onclick="openTour('${esc(t.id)}')">View &amp; book</button>
         </div>
-      </div>
+      </article>
     `;
   }).join('');
 }
@@ -346,11 +432,18 @@ function renderMapMarkers(){
 function openTour(id){
   const t = tours.find(x=>x.id===id);
   if(!t) return;
-  const initials = t.guide.split(' ').map(w=>w[0]).join('');
+  // A tour saved without a guide name used to crash this line and the modal
+  // would simply never open.
+  const initials = String(t.guide || '?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const hero = t.imageUrl
+    ? `<div class="modal-hero" data-img-holder>${imgTag(t.imageUrl, t.title, '')}</div>`
+    : '';
   document.getElementById('modalContent').innerHTML = `
     <button class="modal-close" onclick="closeOverlay()">&times;</button>
+    ${hero}
     <div class="card-region">${esc(t.region)} · ${esc(t.duration)}</div>
     <h2>${esc(t.title)}</h2>
+    ${ratingBadge(t.id)}
     <p class="sub">${esc(t.desc)}</p>
     <ul class="include-list">${(t.includes||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul>
     <div class="guide-box">
@@ -368,8 +461,102 @@ function openTour(id){
     </div>
     <div class="card-price" style="margin-bottom:18px;">${fmtNPR(t.price)} <small>/ person</small></div>
     <button class="btn btn-primary" style="width:100%;" onclick="goToCheckout('${esc(t.id)}')">Continue to payment</button>
+    <div id="tourReviews-${esc(t.id)}" class="review-block">${inlineLoader('Loading reviews')}</div>
   `;
   showOverlay();
+  renderTourReviews(t.id);
+}
+
+/* ---------------- Reviews on a tour ---------------- */
+async function renderTourReviews(tourId){
+  const holder = document.getElementById(`tourReviews-${tourId}`);
+  if(!holder) return;
+
+  let list = [];
+  let tableMissing = false;
+  try {
+    const { data, error } = await supabaseClient
+      .from('reviews').select('*').eq('tour_id', tourId).order('created_at', { ascending: false });
+    if(error) tableMissing = true;
+    list = data || [];
+  } catch(e){ tableMissing = true; }
+
+  if(tableMissing){ holder.innerHTML = ''; return; } // reviews not set up — show nothing rather than an error
+
+  const sessionUser = await checkActiveAuthUser();
+  const alreadyReviewed = sessionUser && list.some(r => r.email === sessionUser.email);
+
+  const listHtml = list.length
+    ? list.map(r => `
+        <div class="review-item">
+          <div class="review-head">
+            <strong>${esc(r.name || 'Traveler')}</strong>
+            ${starsHtml(r.rating)}
+          </div>
+          <p>${esc(r.body || '')}</p>
+        </div>
+      `).join('')
+    : '<p class="review-empty">No reviews on this route yet. Ride it and tell us how it went.</p>';
+
+  let formHtml = '';
+  if(!sessionUser){
+    formHtml = `<button class="btn btn-outline review-cta" onclick="openAuthModal()">Log in to leave a review</button>`;
+  } else if(alreadyReviewed){
+    formHtml = `<p class="review-empty">You've already reviewed this route — thank you.</p>`;
+  } else {
+    formHtml = `
+      <div class="review-form">
+        <label for="reviewRating-${esc(tourId)}">Your rating</label>
+        <div class="star-picker" id="starPicker-${esc(tourId)}">
+          ${[1,2,3,4,5].map(i => `<button type="button" class="star-pick" data-value="${i}" onclick="pickStar('${esc(tourId)}',${i})" aria-label="${i} star${i>1?'s':''}">★</button>`).join('')}
+        </div>
+        <input type="hidden" id="reviewRating-${esc(tourId)}" value="5">
+        <textarea id="reviewBody-${esc(tourId)}" rows="3" placeholder="How was the road, the bike, the rider?"></textarea>
+        <button class="btn btn-primary" id="reviewBtn-${esc(tourId)}" onclick="submitReview('${esc(tourId)}')">Post review</button>
+      </div>
+    `;
+  }
+
+  holder.innerHTML = `
+    <h3 class="review-heading">Reviews</h3>
+    <div class="review-list">${listHtml}</div>
+    ${formHtml}
+  `;
+  if(sessionUser && !alreadyReviewed) pickStar(tourId, 5);
+}
+
+function pickStar(tourId, value){
+  const input = document.getElementById(`reviewRating-${tourId}`);
+  if(input) input.value = value;
+  document.querySelectorAll(`#starPicker-${CSS.escape(tourId)} .star-pick`).forEach(btn => {
+    btn.classList.toggle('star-on', Number(btn.dataset.value) <= value);
+  });
+}
+
+async function submitReview(tourId){
+  const sessionUser = await checkActiveAuthUser();
+  if(!sessionUser){ showToast('Please log in first.', 'error'); return; }
+
+  const rating = Number(document.getElementById(`reviewRating-${tourId}`)?.value || 5);
+  const body = (document.getElementById(`reviewBody-${tourId}`)?.value || '').trim();
+  if(!body){ showToast('Write a few words about the ride.', 'error'); return; }
+
+  const restoreBtn = setBusy(document.getElementById(`reviewBtn-${tourId}`), 'Posting…');
+  const ok = await sbWrite(
+    supabaseClient.from('reviews').insert([{
+      tour_id: tourId, email: sessionUser.email,
+      name: sessionUser.name || sessionUser.email.split('@')[0],
+      rating, body
+    }]),
+    'Could not post your review — check that your Supabase RLS policy allows INSERT on reviews'
+  );
+  restoreBtn();
+  if(!ok) return;
+
+  showToast('Review posted. Thank you!', 'success');
+  await loadReviewStats();
+  renderTours();
+  renderTourReviews(tourId);
 }
 
 async function goToCheckout(id){
@@ -737,7 +924,7 @@ async function renderContactSection(){
   const holder = document.getElementById('contactDynamic');
   if(!holder) return; // this page doesn't have a contact section (e.g. the gallery page)
 
-  holder.innerHTML = '<div class="empty-state">Loading…</div>';
+  holder.innerHTML = inlineLoader('Loading messages');
   const sessionUser = await checkActiveAuthUser();
 
   if(!sessionUser){
@@ -863,12 +1050,13 @@ async function submitGuideApp(){
 
 /* ---------------- Professional Admin Panel ---------------- */
 async function renderAdminPanel(tab){
-  const tabs = ['bookings', 'tours', 'addTour', 'users', 'messages', 'photos', 'ad'];
+  const tabs = ['bookings', 'tours', 'addTour', 'users', 'messages', 'reviews', 'photos', 'ad'];
   const labels = {
     bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour',
-    users:'👥 Customers', messages:'💬 Messages', photos:'🖼️ Gallery', ad:'📢 Popup Ad'
+    users:'👥 Customers', messages:'💬 Messages', reviews:'⭐ Reviews',
+    photos:'🖼️ Gallery', ad:'📢 Popup Ad'
   };
-  let body = '<div class="empty-state">Loading data from Supabase...</div>';
+  let body = inlineLoader('Loading data');
 
   // Fetched once, on every tab, so the stats header up top is always
   // accurate regardless of which tab someone's looking at.
@@ -892,18 +1080,44 @@ async function renderAdminPanel(tab){
   `;
 
   if(tab === 'tours'){
-    body = `<div style="display:flex;flex-direction:column;gap:16px;">
+    body = `<div class="admin-section-intro">Edit any route below — including its photo. Changes go live the moment you save.</div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
       ${tours.map(t => `
         <div class="admin-tour-card">
-          <h4>${esc(t.title)} (${esc(t.region)})</h4>
-          <div class="row-2">
-            <div class="field"><label>Price (NPR)</label><input type="number" id="adm-price-${t.id}" value="${t.price}"></div>
-            <div class="field"><label>Default Guide Name</label><input id="adm-guide-${t.id}" value="${esc(t.guide)}"></div>
+          <div class="admin-tour-head">
+            <div class="admin-tour-thumb" data-img-holder>
+              ${t.imageUrl ? imgTag(t.imageUrl, t.title, '') : '<span class="admin-tour-thumb-empty">No photo</span>'}
+            </div>
+            <h4>${esc(t.title)}<span>${esc(t.region)} · ${esc(t.duration || '')}</span></h4>
           </div>
-          <div class="field"><label>Default Guide Phone</label><input id="adm-guidephone-${t.id}" value="${esc(t.guide_phone || '')}"></div>
-          <div style="display:flex;gap:10px;margin-top:10px;">
-            <button class="btn btn-primary" onclick="saveTourEdits('${t.id}')">Save Changes</button>
-            <button class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;" onclick="deleteTour('${t.id}')">Delete Tour</button>
+          <div class="row-2">
+            <div class="field"><label for="adm-title-${esc(t.id)}">Tour title</label><input id="adm-title-${esc(t.id)}" value="${esc(t.title)}"></div>
+            <div class="field"><label for="adm-region-${esc(t.id)}">Region</label><input id="adm-region-${esc(t.id)}" value="${esc(t.region)}"></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="adm-duration-${esc(t.id)}">Duration</label><input id="adm-duration-${esc(t.id)}" value="${esc(t.duration || '')}"></div>
+            <div class="field"><label for="adm-price-${esc(t.id)}">Price (NPR)</label><input type="number" id="adm-price-${esc(t.id)}" value="${esc(t.price)}"></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="adm-guide-${esc(t.id)}">Default rider name</label><input id="adm-guide-${esc(t.id)}" value="${esc(t.guide || '')}"></div>
+            <div class="field"><label for="adm-guidephone-${esc(t.id)}">Rider phone</label><input id="adm-guidephone-${esc(t.id)}" value="${esc(t.guide_phone || '')}"></div>
+          </div>
+          <div class="field"><label for="adm-desc-${esc(t.id)}">Description</label><textarea id="adm-desc-${esc(t.id)}" rows="2">${esc(t.desc || '')}</textarea></div>
+          <div class="field">
+            <label for="adm-image-${esc(t.id)}">Tour photo — Google Drive share link or any image URL</label>
+            <div class="link-with-preview">
+              <input id="adm-image-${esc(t.id)}" value="${esc(t.imageUrl || '')}" placeholder="https://drive.google.com/file/d/…/view">
+              <button class="btn btn-outline" type="button" onclick="previewImageLink('adm-image-${esc(t.id)}','adm-preview-${esc(t.id)}')">Preview</button>
+            </div>
+            <div class="img-preview" id="adm-preview-${esc(t.id)}"></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="adm-lat-${esc(t.id)}">Map latitude</label><input id="adm-lat-${esc(t.id)}" value="${esc(t.lat ?? '')}" placeholder="28.2096"></div>
+            <div class="field"><label for="adm-lng-${esc(t.id)}">Map longitude</label><input id="adm-lng-${esc(t.id)}" value="${esc(t.lng ?? '')}" placeholder="83.9856"></div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn btn-primary" id="adm-save-${esc(t.id)}" onclick="saveTourEdits('${esc(t.id)}')">Save changes</button>
+            <button class="btn btn-danger" onclick="deleteTour('${esc(t.id)}')">Delete route</button>
           </div>
         </div>
       `).join('')}
@@ -913,23 +1127,42 @@ async function renderAdminPanel(tab){
   if(tab === 'addTour'){
     body = `
       <div class="form-card" style="max-width:100%;">
-        <h3>Add New Route / Destination</h3>
+        <h3>Add a new route</h3>
+        <p class="form-note" style="margin-top:-4px;">The map pin uses the coordinates you enter here — leave them blank and the route drops on Pokhara by default.</p>
         <div class="row-2">
-          <div class="field"><label>Tour Title</label><input id="newTitle" placeholder="Mustang Desert Loop"></div>
-          <div class="field"><label>Region / Destination</label><input id="newRegion" placeholder="Mustang"></div>
+          <div class="field"><label for="newTitle">Tour title</label><input id="newTitle" placeholder="Mustang Desert Loop"></div>
+          <div class="field"><label for="newRegion">Region / destination</label><input id="newRegion" placeholder="Mustang"></div>
         </div>
         <div class="row-2">
-          <div class="field"><label>Duration</label><input id="newDuration" placeholder="3 days"></div>
-          <div class="field"><label>Price (NPR)</label><input id="newPrice" type="number" placeholder="25000"></div>
+          <div class="field"><label for="newDuration">Duration</label><input id="newDuration" placeholder="3 days"></div>
+          <div class="field"><label for="newPrice">Price (NPR)</label><input id="newPrice" type="number" placeholder="25000"></div>
         </div>
         <div class="row-2">
-          <div class="field"><label>Default Guide Name</label><input id="newGuide" placeholder="Tenzin Lama"></div>
-          <div class="field"><label>Default Guide Phone</label><input id="newGuidePhone" placeholder="+977-9800000000"></div>
+          <div class="field"><label for="newGuide">Default rider name</label><input id="newGuide" placeholder="Tenzin Lama"></div>
+          <div class="field"><label for="newGuidePhone">Rider phone</label><input id="newGuidePhone" placeholder="+977-9800000000"></div>
         </div>
-        <div class="field"><label>Description</label><textarea id="newDesc" placeholder="Route description..."></textarea></div>
-        <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="saveNewTour()">Publish New Route to Supabase</button>
+        <div class="field"><label for="newDesc">Description</label><textarea id="newDesc" placeholder="What the road is like, what you'll see, where you stop."></textarea></div>
+        <div class="field">
+          <label for="newImage">Tour photo — Google Drive share link or any image URL</label>
+          <div class="link-with-preview">
+            <input id="newImage" placeholder="https://drive.google.com/file/d/…/view">
+            <button class="btn btn-outline" type="button" onclick="previewImageLink('newImage','newImagePreview')">Preview</button>
+          </div>
+          <p class="form-note">The Drive file must be shared as <strong>Anyone with the link</strong>, or it won't load for visitors. Hit Preview to check before you publish.</p>
+          <div class="img-preview" id="newImagePreview"></div>
+        </div>
+        <div class="field"><label for="newIncludes">What's included (comma separated)</label><input id="newIncludes" placeholder="Bike, Helmet, Fuel, Guide"></div>
+        <div class="row-2">
+          <div class="field"><label for="newLat">Map latitude</label><input id="newLat" placeholder="28.7819"></div>
+          <div class="field"><label for="newLng">Map longitude</label><input id="newLng" placeholder="83.7380"></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="publishTourBtn" onclick="saveNewTour()">Publish route</button>
       </div>
     `;
+  }
+
+  if(tab === 'reviews'){
+    body = await buildAdminReviewsBody();
   }
 
   if(tab === 'bookings'){
@@ -1137,25 +1370,33 @@ async function buildAdminPhotosBody(){
     ? `<div class="empty-state admin-load-error">Could not load gallery photos (${esc(loadError.message || 'unknown error')}). Check that Supabase has a "photos" table with a SELECT policy for anon.</div>`
     : (list.length
         ? `<div class="admin-photo-grid">${list.map(p => `
-            <div class="admin-photo-card">
-              <img src="${esc(p.image_url)}" alt="${esc(p.caption || '')}" onerror="this.src='';this.classList.add('img-broken')">
+            <div class="admin-photo-card" data-img-holder>
+              ${imgTag(p.image_url, p.caption || 'Gallery photo', '')}
+              <span class="admin-photo-fail">Didn't load — check Drive sharing</span>
               <div class="admin-photo-caption">${esc(p.caption || '(no caption)')}</div>
-              <button class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;width:100%;" onclick="deletePhotoAdmin('${esc(p.id)}')">Delete</button>
+              <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deletePhotoAdmin('${esc(p.id)}')">Delete</button>
             </div>
           `).join('')}</div>`
-        : '<div class="empty-state">No photos yet — add your first one below.</div>');
+        : '<div class="empty-state">No photos yet. Add your first one below and it appears on the Gallery page straight away.</div>');
 
   return `
     ${listHtml}
     <div class="form-card" style="max-width:100%;margin-top:20px;">
       <h3>Add a photo</h3>
-      <p class="form-note" style="margin-top:-4px;">Paste a Google Drive share link (set to "Anyone with the link") or any direct image URL.</p>
-      <div class="field"><label>Image link</label><input id="newPhotoUrl" placeholder="https://drive.google.com/file/d/…/view"></div>
-      <div class="row-2">
-        <div class="field"><label>Caption</label><input id="newPhotoCaption" placeholder="Sunrise over Sarangkot"></div>
-        <div class="field"><label>Region (optional)</label><input id="newPhotoRegion" placeholder="Pokhara"></div>
+      <p class="form-note" style="margin-top:-4px;">Paste a Google Drive share link or any direct image URL. On Drive: open the photo → <strong>Share</strong> → change <strong>Restricted</strong> to <strong>Anyone with the link</strong> → Copy link.</p>
+      <div class="field">
+        <label for="newPhotoUrl">Image link</label>
+        <div class="link-with-preview">
+          <input id="newPhotoUrl" placeholder="https://drive.google.com/file/d/…/view">
+          <button class="btn btn-outline" type="button" onclick="previewImageLink('newPhotoUrl','newPhotoPreview')">Preview</button>
+        </div>
+        <div class="img-preview" id="newPhotoPreview"></div>
       </div>
-      <button class="btn btn-primary" style="width:100%;" id="addPhotoBtn" onclick="addPhotoAdmin()">Add to Gallery</button>
+      <div class="row-2">
+        <div class="field"><label for="newPhotoCaption">Caption</label><input id="newPhotoCaption" placeholder="Sunrise over Sarangkot"></div>
+        <div class="field"><label for="newPhotoRegion">Region (optional)</label><input id="newPhotoRegion" placeholder="Pokhara"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" id="addPhotoBtn" onclick="addPhotoAdmin()">Add to gallery</button>
     </div>
   `;
 }
@@ -1284,18 +1525,48 @@ async function cancelBooking(bookingId){
   renderAdminPanel('bookings');
 }
 
-async function saveTourEdits(id){
-  const price = parseFloat(document.getElementById(`adm-price-${id}`).value);
-  const guide = document.getElementById(`adm-guide-${id}`).value.trim();
-  const guidePhone = document.getElementById(`adm-guidephone-${id}`).value.trim();
+// Reads whatever an admin typed into a link box and shows the actual image
+// right there, so a bad Drive permission gets caught BEFORE it's published.
+function previewImageLink(inputId, previewId){
+  const raw = (document.getElementById(inputId)?.value || '').trim();
+  const box = document.getElementById(previewId);
+  if(!box) return;
+  if(!raw){ box.innerHTML = '<span class="img-preview-note">Paste a link first.</span>'; return; }
+  box.innerHTML = `<div class="img-preview-frame" data-img-holder>${imgTag(raw, 'Preview', '')}
+    <span class="img-preview-fail">This link didn't load. On Google Drive, open the file → Share → change "Restricted" to "Anyone with the link".</span></div>`;
+}
 
+const val = id => (document.getElementById(id)?.value || '').trim();
+
+async function saveTourEdits(id){
+  const price = parseFloat(val(`adm-price-${id}`));
+  const title = val(`adm-title-${id}`);
+  const region = val(`adm-region-${id}`);
+  const duration = val(`adm-duration-${id}`);
+  const guide = val(`adm-guide-${id}`);
+  const guidePhone = val(`adm-guidephone-${id}`);
+  const desc = val(`adm-desc-${id}`);
+  const image = val(`adm-image-${id}`);
+  const lat = parseFloat(val(`adm-lat-${id}`));
+  const lng = parseFloat(val(`adm-lng-${id}`));
+
+  if(!title || !region){ showToast('Title and region can\'t be empty.', 'error'); return; }
+
+  const patch = { title, region, duration, price, guide, guide_phone: guidePhone, desc };
+  patch.image_url = imgSrc(image);          // stored already-converted so it works everywhere
+  if(!Number.isNaN(lat)) patch.lat = lat;
+  if(!Number.isNaN(lng)) patch.lng = lng;
+
+  const restoreBtn = setBusy(document.getElementById(`adm-save-${id}`), 'Saving…');
   const ok = await sbWrite(
-    supabaseClient.from('tours').update({ price, guide, guide_phone: guidePhone }).eq('id', id),
+    supabaseClient.from('tours').update(patch).eq('id', id),
     'Could not update tour — check that your Supabase RLS policy allows UPDATE on tours'
   );
+  restoreBtn();
   if(!ok) return;
-  showToast('Tour updated successfully!', 'success');
-  loadTours();
+  showToast('Route updated.', 'success');
+  await loadTours();
+  renderAdminPanel('tours');
 }
 
 async function deleteTour(id){
@@ -1311,33 +1582,87 @@ async function deleteTour(id){
 }
 
 async function saveNewTour(){
-  const title = document.getElementById('newTitle').value.trim();
-  const region = document.getElementById('newRegion').value.trim();
-  const duration = document.getElementById('newDuration').value.trim() || '1 day';
-  const price = parseFloat(document.getElementById('newPrice').value);
-  const guide = document.getElementById('newGuide').value.trim();
-  const guidePhone = document.getElementById('newGuidePhone').value.trim();
-  const desc = document.getElementById('newDesc').value.trim();
+  const title = val('newTitle');
+  const region = val('newRegion');
+  const duration = val('newDuration') || '1 day';
+  const price = parseFloat(val('newPrice'));
+  const guide = val('newGuide');
+  const guidePhone = val('newGuidePhone');
+  const desc = val('newDesc');
+  const image = val('newImage');
+  const includesRaw = val('newIncludes');
+  const lat = parseFloat(val('newLat'));
+  const lng = parseFloat(val('newLng'));
 
-  if(!title || !region || !price || !guide){ showToast('Fill in all required fields.', 'error'); return; }
+  if(!title || !region || !price || !guide){ showToast('Title, region, price and rider name are required.', 'error'); return; }
 
   const newRoute = {
     id: 't' + Date.now(),
     title, region, duration, price, guide,
     guide_phone: guidePhone || '+977-9800000000',
     desc: desc || 'Guided motorcycle journey.',
-    includes: ['Bike', 'Helmet', 'Fuel', 'Guide'],
-    lat: 28.2096, lng: 83.9856
+    includes: includesRaw ? includesRaw.split(',').map(s => s.trim()).filter(Boolean) : ['Bike', 'Helmet', 'Fuel', 'Guide'],
+    image_url: imgSrc(image),
+    // Previously every new route was hard-coded to Pokhara's coordinates, so
+    // adding a Mustang route dropped its map pin on the wrong side of Nepal.
+    lat: Number.isNaN(lat) ? 28.2096 : lat,
+    lng: Number.isNaN(lng) ? 83.9856 : lng
   };
 
+  const restoreBtn = setBusy(document.getElementById('publishTourBtn'), 'Publishing…');
   const ok = await sbWrite(
     supabaseClient.from('tours').insert([newRoute]),
     'Could not publish tour — check that your Supabase RLS policy allows INSERT on tours'
   );
+  restoreBtn();
   if(!ok) return;
-  showToast('New tour published!', 'success');
-  loadTours();
+  showToast('Route published.', 'success');
+  await loadTours();
   renderAdminPanel('tours');
+}
+
+/* ---------------- Admin: Reviews tab ---------------- */
+async function buildAdminReviewsBody(){
+  let list = [];
+  let loadError = null;
+  try {
+    const { data, error } = await supabaseClient.from('reviews').select('*').order('created_at', { ascending: false });
+    if(error){ loadError = error; }
+    list = data || [];
+  } catch(e){ loadError = e; }
+
+  if(loadError){
+    return `<div class="empty-state admin-load-error">Reviews aren't set up yet. Run the <strong>reviews</strong> section of supabase-setup.sql in Supabase → SQL Editor, then reopen this tab. (${esc(loadError.message || 'table not found')})</div>`;
+  }
+  if(!list.length) return '<div class="empty-state">No reviews yet. They appear here as soon as a logged-in customer posts one.</div>';
+
+  const tourName = id => tours.find(t => t.id === id)?.title || id;
+  return `<div class="admin-section-intro">Every review posted on the site. Deleting one removes it from the tour page immediately.</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    ${list.map(r => `
+      <div class="admin-review-row">
+        <div class="review-head">
+          <strong>${esc(r.name || 'Traveler')}</strong>${starsHtml(r.rating)}
+        </div>
+        <div class="admin-review-meta">${esc(tourName(r.tour_id))} · ${esc(r.email || '')}</div>
+        <p>${esc(r.body || '')}</p>
+        <button class="btn btn-danger btn-sm" onclick="deleteReviewAdmin('${esc(r.id)}')">Delete review</button>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+async function deleteReviewAdmin(id){
+  if(!confirm('Delete this review?')) return;
+  const ok = await sbWrite(
+    supabaseClient.from('reviews').delete().eq('id', id),
+    'Could not delete review — check that your Supabase RLS policy allows DELETE on reviews'
+  );
+  if(!ok) return;
+  showToast('Review deleted.', 'success');
+  await loadReviewStats();
+  renderTours();
+  renderAdminPanel('reviews');
 }
 
 /* ---------------- Public Gallery Page (gallery.html) ----------------
@@ -1348,7 +1673,7 @@ async function loadPhotoGallery(){
   const grid = document.getElementById('photoGalleryGrid');
   if(!grid) return;
 
-  grid.innerHTML = '<div class="empty-state">Loading photos…</div>';
+  grid.innerHTML = inlineLoader('Loading photos');
   let list = [];
   let loadError = null;
   try {
@@ -1366,13 +1691,94 @@ async function loadPhotoGallery(){
     return;
   }
 
-  grid.innerHTML = list.map(p => `
-    <div class="gallery-card">
-      <img src="${esc(p.image_url)}" alt="${esc(p.caption || 'Feel It Nepal photo')}" loading="lazy"
-           onerror="this.closest('.gallery-card').classList.add('img-broken')">
-      ${p.caption || p.region ? `<div class="gallery-caption">${esc(p.caption || '')}${p.region ? ` <span class="gallery-region">· ${esc(p.region)}</span>` : ''}</div>` : ''}
-    </div>
-  `).join('');
+  galleryPhotos = list;
+  renderGalleryRegionFilter(list);
+  renderGalleryGrid('All');
+}
+
+function renderGalleryRegionFilter(list){
+  const holder = document.getElementById('galleryFilter');
+  if(!holder) return;
+  const regions = ['All', ...new Set(list.map(p => p.region).filter(Boolean))];
+  if(regions.length < 3){ holder.innerHTML = ''; return; } // not worth a filter for one region
+  holder.innerHTML = regions.map((r, i) =>
+    `<button class="chip${i === 0 ? ' active' : ''}" onclick="renderGalleryGrid('${jsArg(r)}', this)">${esc(r)}</button>`
+  ).join('');
+}
+
+function renderGalleryGrid(region, btnEl){
+  const grid = document.getElementById('photoGalleryGrid');
+  if(!grid) return;
+  if(btnEl){
+    document.querySelectorAll('#galleryFilter .chip').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
+  const list = region === 'All' ? galleryPhotos : galleryPhotos.filter(p => p.region === region);
+  const countEl = document.getElementById('galleryCount');
+  if(countEl) countEl.textContent = `${list.length} photo${list.length === 1 ? '' : 's'}`;
+
+  grid.innerHTML = list.map((p, i) => {
+    const idx = galleryPhotos.indexOf(p);
+    return `
+      <figure class="gallery-card" data-img-holder>
+        <button class="gallery-open" onclick="openLightbox(${idx})" aria-label="Open photo${p.caption ? ': ' + esc(p.caption) : ''}">
+          ${imgTag(p.image_url, p.caption || 'Feel It Nepal photo', '')}
+          <span class="gallery-fail">Photo unavailable</span>
+        </button>
+        ${p.caption || p.region ? `<figcaption class="gallery-caption">${esc(p.caption || '')}${p.region ? `<span class="gallery-region">${esc(p.region)}</span>` : ''}</figcaption>` : ''}
+      </figure>
+    `;
+  }).join('');
+}
+
+/* ---------------- Gallery lightbox ---------------- */
+function openLightbox(index){
+  const p = galleryPhotos[index];
+  if(!p) return;
+  let box = document.getElementById('lightbox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'lightbox';
+    box.className = 'lightbox';
+    document.body.appendChild(box);
+    box.addEventListener('click', e => { if(e.target === box) closeLightbox(); });
+    document.addEventListener('keydown', lightboxKeys);
+  }
+  box.dataset.index = index;
+  box.innerHTML = `
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">&times;</button>
+    <button class="lightbox-nav lightbox-prev" onclick="stepLightbox(-1)" aria-label="Previous photo">&#8249;</button>
+    <figure class="lightbox-figure">
+      ${imgTag(p.image_url, p.caption || 'Feel It Nepal photo', '')}
+      ${p.caption || p.region ? `<figcaption>${esc(p.caption || '')}${p.region ? `<span>${esc(p.region)}</span>` : ''}</figcaption>` : ''}
+    </figure>
+    <button class="lightbox-nav lightbox-next" onclick="stepLightbox(1)" aria-label="Next photo">&#8250;</button>
+  `;
+  box.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function stepLightbox(dir){
+  const box = document.getElementById('lightbox');
+  if(!box) return;
+  const next = (Number(box.dataset.index) + dir + galleryPhotos.length) % galleryPhotos.length;
+  openLightbox(next);
+}
+
+function closeLightbox(){
+  const box = document.getElementById('lightbox');
+  if(!box) return;
+  box.classList.remove('open');
+  box.innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+function lightboxKeys(e){
+  const box = document.getElementById('lightbox');
+  if(!box || !box.classList.contains('open')) return;
+  if(e.key === 'Escape') closeLightbox();
+  if(e.key === 'ArrowRight') stepLightbox(1);
+  if(e.key === 'ArrowLeft') stepLightbox(-1);
 }
 
 /* ---------------- Homepage Popup Ad ---------------- */
@@ -1397,7 +1803,7 @@ async function loadPopupAd(){
     <div class="ad-popup-box">
       <button class="ad-close-btn" aria-label="Close">&times;</button>
       ${ad.link_url ? `<a href="${esc(ad.link_url)}" target="_blank" rel="noopener">` : ''}
-        <img src="${esc(ad.image_url)}" alt="Announcement">
+        ${imgTag(ad.image_url, 'Announcement', '')}
       ${ad.link_url ? `</a>` : ''}
     </div>
   `;
@@ -1409,16 +1815,47 @@ async function loadPopupAd(){
   overlay.addEventListener('click', (e) => { if(e.target === overlay){ localStorage.setItem(dismissKey, '1'); overlay.remove(); } });
 }
 
+/* ---------------- Page loader (speeding bike) ----------------
+   Safety first: this thing sits on top of the whole site, so it has THREE
+   independent ways to disappear —
+     1. this function, once the first data load finishes,
+     2. window 'load',
+     3. a pure-CSS keyframe that hides it at 6s even if JS dies completely.
+   A loader that can get stuck is worse than no loader at all.
+------------------------------------------------------------------------ */
+function hidePageLoader(){
+  const el = document.getElementById('pageLoader');
+  if(!el || el.classList.contains('loader-done')) return;
+  el.classList.add('loader-done');
+  setTimeout(() => el.remove(), 600);
+}
+
+// Small inline version used while a section is fetching from Supabase.
+function inlineLoader(label = 'Loading'){
+  return `<div class="inline-loader" role="status">
+    <svg viewBox="0 0 120 44" class="inline-bike" aria-hidden="true">
+      <circle cx="22" cy="30" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cx="82" cy="30" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M22 30 L42 12 L58 12 L70 26 L82 30 M42 12 L50 30 M58 12 L54 26 L70 26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M30 12 L42 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span>${esc(label)}…</span>
+  </div>`;
+}
+
 /* ---------------- Initialization ---------------- */
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   loadTheme();
-  loadTours();
   initContactDisplay();
   initFloatingWhatsApp();
   initEmailJS();
   checkUserSession();
-  loadPhotoGallery();
   loadPopupAd();
+
+  // These two are the actual content fetches — hide the loader once
+  // whichever one this page needs has finished.
+  await Promise.all([loadTours(), loadPhotoGallery()]);
+  hidePageLoader();
 
   // Handle Supabase Google Auth redirect hash tokens
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -1428,6 +1865,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// Backstop #2: whatever happens above, the loader goes when the page loads.
+window.addEventListener('load', () => setTimeout(hidePageLoader, 300));
 
 /* =========================================================================
    SECURITY NOTE (read this before going live)
