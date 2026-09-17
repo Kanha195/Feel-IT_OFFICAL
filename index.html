@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  
+  <!-- The old tag declared type="image/svg+xml" while pointing at a .png,
+       which some browsers reject outright. Both formats are listed now, so
+       whichever file is actually in your repo gets used. -->
   <link rel="icon" type="image/svg+xml" href="assets/logo-icon.png">
   <link rel="alternate icon" type="image/png" href="assets/logo-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -59,6 +61,7 @@
     <div class="nav-links">
       <a href="#tours">Tours</a>
       <a href="#map">Map</a>
+      <a href="#routeBuilder">Build a route</a>
       <a href="gallery.html">Gallery</a>
       <a href="#how">How it works</a>
       <a href="#safety">Safety</a>
@@ -73,6 +76,7 @@
   <nav class="mobile-menu" id="mobileMenu">
     <a href="#tours" onclick="closeMobileMenu()">Tours</a>
     <a href="#map" onclick="closeMobileMenu()">Map</a>
+    <a href="#routeBuilder" onclick="closeMobileMenu()">Build a route</a>
     <a href="gallery.html">Gallery</a>
     <a href="#how" onclick="closeMobileMenu()">How it works</a>
     <a href="#safety" onclick="closeMobileMenu()">Safety</a>
@@ -121,6 +125,56 @@
   </div>
 </section>
 
+<section id="routeBuilder" style="background:var(--bg);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Build your own route</h2>
+      <p>Search or click anywhere in Nepal to add a stop. We'll draw the route from our Basundhara base and estimate your package price live.</p>
+    </div>
+
+    <div class="route-search-wrap">
+      <input type="text" id="routeSearchInput" class="route-search-input" placeholder="Search a place in Nepal — Pokhara, Mustang, Namche Bazaar…" autocomplete="off">
+      <div id="routeSearchResults" class="route-search-results"></div>
+    </div>
+
+    <div class="route-builder-grid">
+      <div id="routeBuilderMap"></div>
+
+      <div class="route-side-panel">
+        <div class="route-panel-card">
+          <h3>Your route</h3>
+          <ul id="routeItineraryList" class="route-itinerary"></ul>
+          <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="resetRouteBuilder()">Reset route</button>
+        </div>
+
+        <div class="route-panel-card">
+          <h3>Trip details</h3>
+          <div class="field">
+            <label for="routeDays">Duration (days)</label>
+            <input type="number" id="routeDays" min="1" max="30" value="1" oninput="recalcRouteEstimate()">
+          </div>
+          <div class="field">
+            <label for="routePassengers">Passengers</label>
+            <input type="number" id="routePassengers" min="1" max="10" value="1" oninput="recalcRouteEstimate()">
+          </div>
+          <div class="field">
+            <label for="routeTerrain">Terrain</label>
+            <select id="routeTerrain" onchange="recalcRouteEstimate()">
+              <option value="highway">Highway</option>
+              <option value="offroad">Extreme Off-Road</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="route-panel-card route-summary-card">
+          <h3>Estimated price</h3>
+          <div id="routeSummaryBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="how" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
   <div class="wrap">
     <div class="section-head">
@@ -148,7 +202,7 @@
       </div>
       <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
         <h3 style="color:var(--primary);margin-bottom:8px;">Top-Tier Gear Standards</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">DOT/ECE-approved face helmets and communication headsets are supplied fresh for every individual journey.</p>
+        <p style="font-size:14px;color:var(--ink-soft);">DOT/ECE-approved full-face helmets, reinforced abrasion jackets, knee guards, and communication headsets are supplied fresh for every individual journey.</p>
       </div>
       <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
         <h3 style="color:var(--primary);margin-bottom:8px;">Emergency Route Protocols</h3>
