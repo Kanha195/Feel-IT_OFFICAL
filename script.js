@@ -15,7 +15,21 @@ const CONTACT_INFO = {
   instagram: 'feelitoffical' // used exactly as given — double check this matches your real handle
 };
 
-/*
+/* ---------------- Google Drive image handling ----------------
+   WHY THIS CHANGED: the old code turned Drive share links into
+   `https://drive.google.com/uc?export=view&id=…`. Google no longer serves
+   that endpoint to <img> tags — it answers with a redirect to an HTML
+   "virus scan / sign in" page, so the browser gets HTML where it wanted a
+   JPEG and renders a broken image. That is exactly why nothing you
+   uploaded ever appeared on the site.
+
+   `https://drive.google.com/thumbnail?id=…&sz=w1600` DOES still serve a
+   real image to <img> tags, so that's what we use now.
+
+   Everything is normalised at DISPLAY time (not just when saving), so the
+   photos already sitting in your Supabase table with the old broken URL
+   start working the moment you upload this file — you don't have to
+   re-add a single one.
 --------------------------------------------------------------------- */
 
 // Pull the file ID out of any Drive URL shape people actually paste.
@@ -652,6 +666,77 @@ function initMap(){
     }).addTo(leafletMap);
   }
   renderMapMarkers();
+  initTourMapSearch();
+}
+
+/* ---------------- Search box on the "Where we ride" map ----------------
+   Typing a place name geocodes it (same Nominatim endpoint the route
+   builder uses) and flies the map there. If a tour marker sits within
+   ~15km of the result, its popup opens automatically so the place name
+   the visitor typed is what they see. */
+let tourMapSearchTimer = null;
+let tourMapSearchCache = [];
+let tourMapSearchMarker = null;
+
+function initTourMapSearch(){
+  const input = document.getElementById('tourMapSearchInput');
+  if(!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+  input.addEventListener('input', () => {
+    clearTimeout(tourMapSearchTimer);
+    const q = input.value.trim();
+    if(q.length < 3){ renderTourMapSearchResults([]); return; }
+    tourMapSearchTimer = setTimeout(() => searchTourMapPlaces(q), 450);
+  });
+  document.addEventListener('click', e => {
+    if(!e.target.closest('#map .route-search-wrap')) renderTourMapSearchResults([]);
+  });
+}
+
+async function searchTourMapPlaces(query){
+  const box = document.getElementById('tourMapSearchResults');
+  if(box){ box.classList.add('open'); box.innerHTML = `<div class="route-search-status">${inlineLoader('Searching')}</div>`; }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=np&limit=6&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    tourMapSearchCache = data || [];
+    renderTourMapSearchResults(tourMapSearchCache);
+  } catch(e){
+    if(box) box.innerHTML = `<div class="route-search-status">Search is unavailable right now.</div>`;
+  }
+}
+
+function renderTourMapSearchResults(results){
+  const box = document.getElementById('tourMapSearchResults');
+  if(!box) return;
+  if(!results.length){ box.innerHTML = ''; box.classList.remove('open'); return; }
+  box.classList.add('open');
+  box.innerHTML = results.map((r, i) =>
+    `<button type="button" class="route-search-item" onclick="pickTourMapSearchResult(${i})">${esc(r.display_name)}</button>`
+  ).join('');
+}
+
+function pickTourMapSearchResult(i){
+  const r = tourMapSearchCache[i];
+  if(!r || !leafletMap) return;
+  const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+  leafletMap.flyTo([lat, lng], 10);
+
+  if(tourMapSearchMarker){ leafletMap.removeLayer(tourMapSearchMarker); tourMapSearchMarker = null; }
+
+  // If a real tour sits nearby, show that instead of a bare pin.
+  const nearby = tours.find(t => t.lat && t.lng && haversineKm(lat, lng, t.lat, t.lng) < 15);
+  if(nearby){
+    const marker = mapMarkers.find(m => m.getLatLng().lat === nearby.lat && m.getLatLng().lng === nearby.lng);
+    if(marker) marker.openPopup();
+  } else {
+    tourMapSearchMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup(esc(r.display_name.split(',')[0].trim())).openPopup();
+  }
+
+  const input = document.getElementById('tourMapSearchInput');
+  if(input) input.value = r.display_name.split(',')[0].trim();
+  renderTourMapSearchResults([]);
 }
 
 function renderMapMarkers(){
@@ -1395,14 +1480,24 @@ async function renderAdminPanel(tab){
     body = `
       <div class="form-card" style="max-width:100%;">
         <h3>Add a new route</h3>
-        <p class="form-note" style="margin-top:-4px;">The map pin uses the coordinates you enter here — leave them blank and the route drops on Pokhara by default.</p>
+        <p class="form-note" style="margin-top:-4px;">Type the region below and the map coordinates and a suggested price fill in on their own — both stay editable if you want to override them.</p>
         <div class="row-2">
-          <div class="field"><label for="newTitle">Tour title</label><input id="newTitle" placeholder="Mustang Desert Loop"></div>
-          <div class="field"><label for="newRegion">Region / destination</label><input id="newRegion" placeholder="Mustang"></div>
+          <div class="field"><label for="newTitle">Tour title</label><input id="newTitle" placeholder="Mustang Desert Loop" oninput="scheduleNewTourAutofill()"></div>
+          <div class="field"><label for="newRegion">Region / destination</label><input id="newRegion" placeholder="Mustang" oninput="scheduleNewTourAutofill()"></div>
         </div>
         <div class="row-2">
-          <div class="field"><label for="newDuration">Duration</label><input id="newDuration" placeholder="3 days"></div>
-          <div class="field"><label for="newPrice">Price (NPR)</label><input id="newPrice" type="number" placeholder="25000"></div>
+          <div class="field"><label for="newDuration">Duration</label><input id="newDuration" placeholder="3 days" oninput="scheduleNewTourPriceCalc()"></div>
+          <div class="field"><label for="newTerrain">Road terrain</label>
+            <select id="newTerrain" onchange="scheduleNewTourPriceCalc()">
+              <option value="highway">Highway</option>
+              <option value="offroad">Extreme Off-Road</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="newPrice">Price (NPR, per person)</label>
+          <input id="newPrice" type="number" placeholder="25000">
+          <div id="newTourPriceHint" class="form-note" style="margin-top:4px;">Add a region and duration above for a suggested price.</div>
         </div>
         <div class="row-2">
           <div class="field"><label for="newGuide">Default rider name</label><input id="newGuide" placeholder="Tenzin Lama"></div>
@@ -1410,19 +1505,21 @@ async function renderAdminPanel(tab){
         </div>
         <div class="field"><label for="newDesc">Description</label><textarea id="newDesc" placeholder="What the road is like, what you'll see, where you stop."></textarea></div>
         <div class="field">
-          <label for="newImage">Tour photo — Google Drive share link or any image URL</label>
-          <div class="link-with-preview">
-            <input id="newImage" placeholder="https://drive.google.com/file/d/…/view">
-            <button class="btn btn-outline" type="button" onclick="previewImageLink('newImage','newImagePreview')">Preview</button>
+          <label for="newImage">Tour photo</label>
+          <div class="admin-photo-upload-row">
+            <input type="file" id="newImageFile" accept="image/*" onchange="handleAdminPhotoFile(this,'newImage','newImagePreview','tours','newImageUploadStatus')">
+            <span class="form-note">or paste a link —</span>
+            <input id="newImage" placeholder="https://…/photo.jpg" oninput="previewImageLink('newImage','newImagePreview')" style="flex:1;">
           </div>
-          <p class="form-note">The Drive file must be shared as <strong>Anyone with the link</strong>, or it won't load for visitors. Hit Preview to check before you publish.</p>
           <div class="img-preview" id="newImagePreview"></div>
+          <div id="newImageUploadStatus" class="form-note"></div>
         </div>
         <div class="field"><label for="newIncludes">What's included (comma separated)</label><input id="newIncludes" placeholder="Bike, Helmet, Fuel, Guide"></div>
         <div class="row-2">
           <div class="field"><label for="newLat">Map latitude</label><input id="newLat" placeholder="28.7819"></div>
           <div class="field"><label for="newLng">Map longitude</label><input id="newLng" placeholder="83.7380"></div>
         </div>
+        <div id="newTourLocateStatus" class="form-note"></div>
         <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="publishTourBtn" onclick="saveNewTour()">Publish route</button>
       </div>
     `;
@@ -1518,7 +1615,7 @@ function renderBookingRowForAdmin(b){
         <div class="field"><label>Rider Phone</label><input id="assign-phone-${b.id}" placeholder="+977-98XXXXXXXX"></div>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-primary" id="confirm-btn-${b.id}" onclick="assignRiderToBooking('${esc(b.id)}')">Verify payment &amp; confirm rider</button>
+        <button class="btn btn-primary" id="confirm-btn-${b.id}" onclick="assignRiderToBooking('${esc(b.id)}', '${esc(b.phone||'')}', '${esc(b.name||'')}', '${esc(b.tour_title||'')}', '${esc(b.date||'')}')">Verify payment &amp; confirm rider</button>
         <button class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;" onclick="cancelBooking('${esc(b.id)}')">Cancel booking</button>
       </div>
     `;
@@ -1653,14 +1750,16 @@ async function buildAdminPhotosBody(){
     ${listHtml}
     <div class="form-card" style="max-width:100%;margin-top:20px;">
       <h3>Add a photo</h3>
-      <p class="form-note" style="margin-top:-4px;">Paste a Google Drive share link or any direct image URL. On Drive: open the photo → <strong>Share</strong> → change <strong>Restricted</strong> to <strong>Anyone with the link</strong> → Copy link.</p>
+      <p class="form-note" style="margin-top:-4px;">Upload a photo straight from your phone or computer, or paste any image link (Google Drive included).</p>
       <div class="field">
-        <label for="newPhotoUrl">Image link</label>
-        <div class="link-with-preview">
-          <input id="newPhotoUrl" placeholder="https://drive.google.com/file/d/…/view">
-          <button class="btn btn-outline" type="button" onclick="previewImageLink('newPhotoUrl','newPhotoPreview')">Preview</button>
+        <label for="newPhotoUrl">Photo</label>
+        <div class="admin-photo-upload-row">
+          <input type="file" id="newPhotoFile" accept="image/*" onchange="handleAdminPhotoFile(this,'newPhotoUrl','newPhotoPreview','gallery','newPhotoUploadStatus')">
+          <span class="form-note">or paste a link —</span>
+          <input id="newPhotoUrl" placeholder="https://…/photo.jpg" oninput="previewImageLink('newPhotoUrl','newPhotoPreview')" style="flex:1;">
         </div>
         <div class="img-preview" id="newPhotoPreview"></div>
+        <div id="newPhotoUploadStatus" class="form-note"></div>
       </div>
       <div class="row-2">
         <div class="field"><label for="newPhotoCaption">Caption</label><input id="newPhotoCaption" placeholder="Sunrise over Sarangkot"></div>
@@ -1765,7 +1864,7 @@ async function removePopupAd(btnEl){
   renderAdminPanel('ad');
 }
 
-async function assignRiderToBooking(bookingId){
+async function assignRiderToBooking(bookingId, customerPhone, customerName, tourTitle, date){
   const guideInput = document.getElementById(`assign-guide-${bookingId}`);
   const phoneInput = document.getElementById(`assign-phone-${bookingId}`);
   const guide = guideInput.value.trim();
@@ -1782,6 +1881,20 @@ async function assignRiderToBooking(bookingId){
   if(!ok) return;
   showToast('Rider assigned — booking confirmed for the customer.', 'success');
   renderAdminPanel('bookings');
+  notifyCustomerWhatsApp(customerPhone, customerName, tourTitle, date, guide, guidePhone);
+}
+
+// WhatsApp has no free way to send a message with zero human interaction —
+// that needs a paid Meta Business API number. What THIS can do for free:
+// pre-fill the message and open WhatsApp with it ready to go, so
+// confirming a booking is followed by one tap (Send) instead of writing
+// the message yourself. That's what this does.
+function notifyCustomerWhatsApp(customerPhone, customerName, tourTitle, date, guide, guidePhone){
+  if(!customerPhone) return;
+  const digits = customerPhone.replace(/[^0-9]/g, '');
+  const withCountry = digits.startsWith('977') ? digits : `977${digits.replace(/^0+/, '')}`;
+  const msg = `Hi ${customerName || 'there'}! Your Feel It booking for "${tourTitle}" on ${date} is confirmed. Your rider is ${guide} (${guidePhone}) — they'll be in touch before your ride. See you on the road!`;
+  window.open(`https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 async function cancelBooking(bookingId){
@@ -1804,6 +1917,113 @@ function previewImageLink(inputId, previewId){
   if(!raw){ box.innerHTML = '<span class="img-preview-note">Paste a link first.</span>'; return; }
   box.innerHTML = `<div class="img-preview-frame" data-img-holder>${imgTag(raw, 'Preview', '')}
     <span class="img-preview-fail">This link didn't load. On Google Drive, open the file → Share → change "Restricted" to "Anyone with the link".</span></div>`;
+}
+
+/* =========================================================================
+   REAL FILE UPLOAD (Supabase Storage)
+   Requires a public bucket called "site-images" in your Supabase project —
+   Storage → New bucket → name it exactly "site-images" → toggle Public on.
+   That's a one-time, ~20-second setup; nothing else needs to change once
+   it exists. Until then this fails with a clear error and the URL-paste
+   field next to it keeps working as a fallback.
+   ========================================================================= */
+async function handleAdminPhotoFile(inputEl, targetFieldId, previewId, folder = 'tours', statusId = ''){
+  const file = inputEl.files[0];
+  if(!file) return;
+  const statusEl = statusId ? document.getElementById(statusId) : null;
+  if(statusEl){ statusEl.textContent = 'Uploading…'; statusEl.className = 'form-note'; }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `${folder}/${Date.now()}_${safeName}`;
+
+  try {
+    const { error: upErr } = await supabaseClient.storage.from('site-images').upload(path, file, { upsert: true });
+    if(upErr) throw upErr;
+    const { data } = supabaseClient.storage.from('site-images').getPublicUrl(path);
+    const publicUrl = data?.publicUrl;
+    if(!publicUrl) throw new Error('Upload succeeded but no public URL was returned.');
+
+    const targetField = document.getElementById(targetFieldId);
+    if(targetField) targetField.value = publicUrl;
+    previewImageLink(targetFieldId, previewId);
+    if(statusEl){ statusEl.textContent = 'Uploaded ✓'; statusEl.className = 'form-note'; }
+  } catch(e){
+    console.error('Photo upload failed', e);
+    if(statusEl){
+      statusEl.textContent = `Upload failed (${e.message || 'unknown error'}) — check that a public "site-images" bucket exists in Supabase Storage, or just paste a link instead.`;
+      statusEl.className = 'form-note admin-load-error';
+    }
+  }
+  inputEl.value = '';
+}
+
+/* =========================================================================
+   ADD-TOUR AUTO LOCATE + AUTO PRICE
+   Typing a region/title geocodes it (same Nominatim lookup the route
+   builder uses) to fill Map latitude/longitude, then the price suggestion
+   reuses the exact same distance + ROUTE_PRICING formula as the "Build
+   your own route" estimator and the financial calculator, so all three
+   numbers agree.
+   ========================================================================= */
+let newTourAutofillTimer = null;
+let newTourPriceToken = 0;
+
+function scheduleNewTourAutofill(){
+  clearTimeout(newTourAutofillTimer);
+  newTourAutofillTimer = setTimeout(autofillNewTourLocation, 600);
+}
+
+async function autofillNewTourLocation(){
+  const query = (val('newRegion') || val('newTitle')).trim();
+  const statusEl = document.getElementById('newTourLocateStatus');
+  if(query.length < 3){ if(statusEl) statusEl.textContent = ''; return; }
+  if(statusEl) statusEl.textContent = `Locating "${query}"…`;
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=np&limit=1&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data && data[0]){
+      document.getElementById('newLat').value = parseFloat(data[0].lat).toFixed(5);
+      document.getElementById('newLng').value = parseFloat(data[0].lon).toFixed(5);
+      if(statusEl) statusEl.textContent = `Located: ${data[0].display_name.split(',').slice(0,2).join(',')} — coordinates filled in, edit them above if this isn't quite right.`;
+    } else if(statusEl){
+      statusEl.textContent = `Couldn't find "${query}" in Nepal — enter the coordinates manually, or try a more specific region name.`;
+    }
+  } catch(e){
+    if(statusEl) statusEl.textContent = 'Location lookup is unavailable right now — enter coordinates manually.';
+  }
+  scheduleNewTourPriceCalc();
+}
+
+function scheduleNewTourPriceCalc(){
+  recalcNewTourPrice();
+}
+
+async function recalcNewTourPrice(){
+  const hintEl = document.getElementById('newTourPriceHint');
+  if(!hintEl) return;
+
+  const lat = parseFloat(val('newLat')), lng = parseFloat(val('newLng'));
+  if(Number.isNaN(lat) || Number.isNaN(lng)){
+    hintEl.textContent = 'Add a region above (or coordinates below) for a suggested price.';
+    return;
+  }
+
+  const terrain = document.getElementById('newTerrain')?.value || 'highway';
+  const durationText = val('newDuration');
+  const days = Math.max(1, parseInt((durationText.match(/\d+/) || ['1'])[0], 10));
+
+  const myToken = ++newTourPriceToken;
+  hintEl.textContent = 'Calculating suggested price…';
+  const { km, source } = await getRoadDistanceKm([ROUTE_START, { lat, lng }], terrain);
+  if(myToken !== newTourPriceToken) return;
+
+  const rates = ROUTE_PRICING[terrain];
+  const suggested = Math.round((rates.perKm * km + rates.perDayPerPerson * days) / 100) * 100;
+
+  hintEl.innerHTML = `Suggested: <strong>${fmtNPR(suggested)}</strong> per person (${km.toFixed(0)}km from Basundhara, ${days} day${days>1?'s':''}, ${terrain==='highway'?'highway':'off-road'}${source==='estimate' ? ' — straight-line estimate' : ''}). ` +
+    `<button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('newPrice').value=${suggested}">Use this price</button>`;
 }
 
 const val = id => (document.getElementById(id)?.value || '').trim();
