@@ -350,6 +350,8 @@ footer p{font-size:13px;max-width:340px;color:var(--ink-soft);}
 /* ---------------- Admin panel polish ---------------- */
 .modal-admin{max-width:960px;}
 .admin-header{margin-bottom:18px;}
+.admin-header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+.admin-header-top h2{margin:0;}
 .admin-header h2{margin-bottom:4px;}
 .admin-tabs{margin-bottom:24px;}
 
@@ -730,4 +732,67 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .loader-word{font-size:32px;}
   .contact-socials{flex-direction:column !important;}
   .contact-socials .social-btn{justify-content:center;}
+}
+
+/* =========================================================================
+   CUSTOM ROUTE BUILDER
+   ========================================================================= */
+.route-search-wrap{position:relative;max-width:520px;margin:0 auto 22px;}
+.route-search-input{
+  width:100%;padding:13px 16px;border:1px solid var(--line);border-radius:999px;
+  background:var(--paper);color:var(--ink);font-size:15px;font-family:inherit;
+}
+.route-search-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-tint);}
+.route-search-results{
+  display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:20;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  max-height:260px;overflow-y:auto;box-shadow:0 12px 30px rgba(0,0,0,.25);
+}
+.route-search-results.open{display:block;}
+.route-search-item{
+  display:block;width:100%;text-align:left;padding:11px 16px;border:none;background:none;
+  color:var(--ink);font-size:14px;border-bottom:1px solid var(--line);cursor:pointer;font-family:inherit;
+}
+.route-search-item:last-child{border-bottom:none;}
+.route-search-item:hover{background:var(--primary-tint);color:var(--primary);}
+.route-search-status{padding:14px 16px;font-size:13px;color:var(--ink-soft);}
+
+.route-builder-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;align-items:start;}
+#routeBuilderMap{
+  height:480px;border-radius:var(--radius);border:1px solid var(--line);
+  overflow:hidden;background:var(--paper);
+}
+.route-side-panel{display:flex;flex-direction:column;gap:16px;}
+.route-panel-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+.route-panel-card h3{margin:0 0 12px;font-size:18px;}
+
+.route-itinerary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;}
+.route-stop{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;
+}
+.route-stop span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.route-stop-fixed{border-color:var(--primary);background:var(--primary-tint);}
+.route-stop-fixed small{color:var(--primary);font-weight:700;text-transform:uppercase;font-size:10px;flex-shrink:0;}
+.route-stop-remove{
+  background:none;border:none;color:var(--danger);font-size:20px;line-height:1;cursor:pointer;flex-shrink:0;padding:0 2px;
+}
+
+.route-summary-card{background:linear-gradient(160deg, var(--paper), var(--primary-tint));}
+.route-summary-empty{font-size:13px;color:var(--ink-soft);margin:0;}
+.route-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.route-summary-grid div{display:flex;flex-direction:column;gap:2px;}
+.route-summary-grid span{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);}
+.route-summary-grid strong{font-size:16px;}
+.route-total{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border-top:1px solid var(--line);padding-top:12px;margin-bottom:10px;
+}
+.route-total span{font-size:13px;color:var(--ink-soft);}
+.route-total strong{font-size:24px;color:var(--primary);font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;}
+.route-summary-note{font-size:12px;color:var(--ink-soft);line-height:1.5;margin:0 0 10px;}
+
+@media(max-width:900px){
+  .route-builder-grid{grid-template-columns:1fr;}
+  #routeBuilderMap{height:360px;}
 }
