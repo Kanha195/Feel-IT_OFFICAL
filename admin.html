@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Financial Control — Feel-IT Pillion Tours</title>
+
+<!--
+  This file is intentionally 100% self-contained: its own styling and
+  script, no shared style.css or script.js. Nothing on the main site can
+  ever break this page, and nothing here can ever break the main site.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0f172a; --paper:#16213a; --paper-2:#1c2b4d; --line:#2b3b5e;
+    --ink:#f1f5f9; --ink-soft:#94a3b8; --primary:#22d3ee; --primary-tint:rgba(34,211,238,.12);
+    --danger:#f87171; --danger-tint:rgba(248,113,113,.12); --good:#4ade80; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Work Sans',sans-serif;line-height:1.5;
+  }
+  .fic-display{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;}
+  .fic-wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* ---------------- Access gate ---------------- */
+  .fic-gate{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:16px;text-align:center;padding:20px;
+  }
+  .fic-gate h1{font-size:32px;margin:0;}
+  .fic-gate p{color:var(--ink-soft);max-width:420px;margin:0;}
+  .fic-btn{
+    display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
+    border:1px solid var(--primary);color:var(--primary);text-decoration:none;font-weight:600;
+    background:none;cursor:pointer;font-family:inherit;font-size:14px;transition:.2s;
+  }
+  .fic-btn:hover{background:var(--primary-tint);}
+  .fic-btn-solid{background:var(--primary);color:#04212b;border-color:var(--primary);}
+  .fic-btn-solid:hover{box-shadow:0 0 20px var(--primary-tint);}
+  .fic-btn-danger{border-color:var(--danger);color:var(--danger);}
+  .fic-btn-danger:hover{background:var(--danger-tint);}
+
+  /* ---------------- Header ---------------- */
+  .fic-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px;}
+  .fic-header h1{font-size:30px;margin:0 0 4px;}
+  .fic-header p{margin:0;color:var(--ink-soft);font-size:13px;}
+  .fic-header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .fic-banner{
+    background:var(--danger-tint);border:1px solid var(--danger);border-radius:var(--radius);
+    padding:14px 18px;font-size:13px;color:#fecaca;margin-bottom:26px;line-height:1.6;
+  }
+  .fic-banner strong{color:#fff;}
+
+  /* ---------------- Layout ---------------- */
+  .fic-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  .fic-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px;}
+  .fic-card h2{font-size:19px;margin:0 0 16px;}
+  .fic-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .fic-field{margin-bottom:14px;}
+  .fic-field label{display:block;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .fic-field input,.fic-field select{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
+    background:var(--paper-2);color:var(--ink);font-size:14px;font-family:inherit;
+  }
+  .fic-field input:focus,.fic-field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-tint);}
+  .fic-field-note{font-size:11px;color:var(--ink-soft);margin-top:5px;}
+
+  /* ---------------- Results ---------------- */
+  .fic-line{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .fic-line:last-child{border-bottom:none;}
+  .fic-line span:first-child{color:var(--ink-soft);}
+  .fic-line span:last-child{font-weight:600;}
+  .fic-total-line{padding-top:14px;margin-top:6px;border-top:2px solid var(--line);}
+  .fic-total-line span:last-child{font-size:20px;font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;color:var(--primary);}
+  .fic-total-line.negative span:last-child{color:var(--danger);}
+
+  .fic-split-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px;}
+  .fic-split-table th,.fic-split-table td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--line);}
+  .fic-split-table th{color:var(--ink-soft);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+  .fic-split-table tr:last-child td{border-bottom:none;}
+
+  .fic-negative-warning{
+    background:var(--danger-tint);border:1px solid var(--danger);border-radius:10px;
+    padding:12px 14px;font-size:13px;color:#fecaca;margin-top:14px;
+  }
+
+  .fic-pdf-btn{width:100%;margin-top:20px;justify-content:center;}
+
+  @media(max-width:820px){
+    .fic-grid{grid-template-columns:1fr;}
+    .fic-row-2{grid-template-columns:1fr;}
+    .fic-header{flex-direction:column;align-items:flex-start;}
+  }
+
+  /* ---------------- Printable proposal (off-screen, only used by html2pdf) ---------------- */
+  #ficProposal{
+    position:fixed;top:0;left:-9999px;width:760px;background:#fff;color:#111;
+    padding:48px;font-family:'Work Sans',Arial,sans-serif;
+  }
+  #ficProposal h1{font-family:'Bebas Neue',sans-serif;font-size:34px;margin:0 0 2px;color:#0f172a;letter-spacing:1px;}
+  #ficProposal .fic-p-sub{color:#64748b;font-size:12px;margin-bottom:26px;}
+  #ficProposal h2{font-size:16px;border-bottom:2px solid #0f172a;padding-bottom:6px;margin:26px 0 12px;}
+  #ficProposal table{width:100%;border-collapse:collapse;font-size:13px;}
+  #ficProposal td,#ficProposal th{padding:8px 4px;border-bottom:1px solid #e2e8f0;text-align:left;}
+  #ficProposal th{color:#64748b;font-size:11px;text-transform:uppercase;}
+  #ficProposal .fic-p-total td{font-weight:700;font-size:15px;border-top:2px solid #0f172a;border-bottom:none;}
+</style>
+</head>
+<body>
+
+<!-- ============== ACCESS GATE ==============
+     This checks a sessionStorage flag set by index.html's login form. It
+     is NOT real security — see the on-page notice for exactly what that
+     means and how to actually lock this page down. -->
+<div id="ficGate" class="fic-gate" style="display:none;">
+  <h1>🔒 Admin session required</h1>
+  <p>This page only opens right after logging in as admin from the main site. Log in there first.</p>
+  <a class="fic-btn fic-btn-solid" href="index.html">Go to login</a>
+</div>
+
+<div id="ficDashboard" style="display:none;">
+  <div class="fic-wrap">
+
+    <div class="fic-header">
+      <div>
+        <h1 class="fic-display">FEEL-IT PILLION TOURS — ADMIN FINANCIAL CONTROL</h1>
+        <p>Cost, margin and partner-split calculator for a single trip quote.</p>
+      </div>
+      <div class="fic-header-actions">
+        <a class="fic-btn" href="index.html?admin=1">🏍️ Operations Panel</a>
+        <button class="fic-btn fic-btn-danger" onclick="ficLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="fic-banner">
+      <strong>This page is not actually secure.</strong> It only checks that this browser tab logged in as admin —
+      the same client-side check as the rest of the site. Anyone who reads the page source can find the admin
+      password hash, and anyone with dev tools open can set the same session flag by hand and open this page
+      directly, bypassing the login screen. Don't put anything here you wouldn't want a determined stranger to see.
+      Real protection needs a proper backend login — ask if you want that built.
+    </div>
+
+    <div class="fic-grid">
+
+      <!-- ---------------- INPUTS ---------------- -->
+      <div class="fic-card">
+        <h2>Trip details</h2>
+        <div class="fic-field">
+          <label for="ficDestination">Destination / route name</label>
+          <input type="text" id="ficDestination" placeholder="Upper Mustang Loop" oninput="ficCalculate()">
+        </div>
+        <div class="fic-row-2">
+          <div class="fic-field">
+            <label for="ficDistance">Total distance (km)</label>
+            <input type="number" id="ficDistance" min="0" value="300" oninput="ficCalculate()">
+          </div>
+          <div class="fic-field">
+            <label for="ficDays">Trip duration (days)</label>
+            <input type="number" id="ficDays" min="1" value="3" oninput="ficCalculate()">
+          </div>
+        </div>
+        <div class="fic-row-2">
+          <div class="fic-field">
+            <label for="ficTerrain">Road terrain</label>
+            <select id="ficTerrain" onchange="ficCalculate()">
+              <option value="highway">Highway</option>
+              <option value="offroad">Extreme Off-Road</option>
+            </select>
+          </div>
+          <div class="fic-field">
+            <label for="ficGroupSize">Group size (passenger + rider pairs)</label>
+            <input type="number" id="ficGroupSize" min="1" value="2" oninput="ficCalculate()">
+          </div>
+        </div>
+        <div class="fic-row-2">
+          <div class="fic-field">
+            <label for="ficPetrolPrice">Petrol price (NPR / liter)</label>
+            <input type="number" id="ficPetrolPrice" min="0" value="200" oninput="ficCalculate()">
+          </div>
+          <div class="fic-field">
+            <label for="ficTicketPrice">Ticket price per passenger (NPR)</label>
+            <input type="number" id="ficTicketPrice" min="0" value="25000" oninput="ficCalculate()">
+            <div class="fic-field-note">Not in the original spec — added because Total Revenue needs a sale price to multiply against.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------- RESULTS ---------------- -->
+      <div class="fic-card">
+        <h2>Expense &amp; profit breakdown</h2>
+        <div id="ficResults"></div>
+
+        <h2 style="margin-top:26px;">Partner payout split</h2>
+        <table class="fic-split-table">
+          <thead><tr><th>Party</th><th>Share</th><th>Amount (NPR)</th></tr></thead>
+          <tbody id="ficSplitBody"></tbody>
+        </table>
+
+        <button class="fic-btn fic-btn-solid fic-pdf-btn" onclick="ficDownloadPdf()">📄 Download official proposal PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Off-screen printable proposal (built fresh each download) ============== -->
+<div id="ficProposal">
+  <h1>FEEL-IT PILLION TOURS</h1>
+  <div class="fic-p-sub">Official Financial Quote &nbsp;·&nbsp; Generated <span id="ficPDate"></span></div>
+
+  <h2>Trip</h2>
+  <table>
+    <tr><td>Destination / route</td><td id="ficPDest" style="text-align:right;"></td></tr>
+    <tr><td>Distance</td><td id="ficPDist" style="text-align:right;"></td></tr>
+    <tr><td>Duration</td><td id="ficPDays" style="text-align:right;"></td></tr>
+    <tr><td>Terrain</td><td id="ficPTerrain" style="text-align:right;"></td></tr>
+    <tr><td>Group size</td><td id="ficPGroup" style="text-align:right;"></td></tr>
+  </table>
+
+  <h2>Expense breakdown</h2>
+  <table id="ficPExpenseTable"></table>
+
+  <h2>Profit summary</h2>
+  <table id="ficPProfitTable"></table>
+
+  <h2>Partner payout split</h2>
+  <table id="ficPSplitTable"></table>
+</div>
+
+<script>
+/* =========================================================================
+   ACCESS GATE
+   Reads the flag index.html's login sets after a matching admin login.
+   This is a convenience check, not a security boundary — the banner on
+   the page explains exactly why.
+   ========================================================================= */
+if (sessionStorage.getItem('feelit_admin_session')) {
+  document.getElementById('ficDashboard').style.display = 'block';
+} else {
+  document.getElementById('ficGate').style.display = 'flex';
+}
+
+function ficLogout(){
+  sessionStorage.removeItem('feelit_admin_session');
+  window.location.href = 'index.html';
+}
+
+/* =========================================================================
+   RATES — exactly as specified. Edit here if your real costs change.
+   ========================================================================= */
+const FIC_KM_PER_LITER = 25;
+const FIC_RIDER_RATE = { highway: 2500, offroad: 3500 };   // NPR / day / rider
+const FIC_FOOD_HOTEL_PER_DAY = 1600;                        // NPR / day / pair
+const FIC_SPLIT = { founder: 0.40, partnerB: 0.20, partnerC: 0.20, reserve: 0.20 };
+
+function ficNPR(n){
+  const num = Number(n) || 0;
+  return 'NPR ' + Math.round(num).toLocaleString();
+}
+
+function ficReadInputs(){
+  return {
+    destination: document.getElementById('ficDestination').value.trim() || 'Untitled route',
+    distance: Math.max(0, parseFloat(document.getElementById('ficDistance').value) || 0),
+    days: Math.max(1, parseInt(document.getElementById('ficDays').value, 10) || 1),
+    terrain: document.getElementById('ficTerrain').value,
+    groupSize: Math.max(1, parseInt(document.getElementById('ficGroupSize').value, 10) || 1),
+    petrolPrice: Math.max(0, parseFloat(document.getElementById('ficPetrolPrice').value) || 0),
+    ticketPrice: Math.max(0, parseFloat(document.getElementById('ficTicketPrice').value) || 0)
+  };
+}
+
+function ficCompute(v){
+  // v.groupSize = number of passenger+rider PAIRS = number of bikes (pillion touring: one rider + one passenger per bike)
+  const numberOfBikes = v.groupSize;
+
+  const fuelExpense = (v.distance / FIC_KM_PER_LITER) * v.petrolPrice * numberOfBikes;
+  const riderRate = FIC_RIDER_RATE[v.terrain];
+  const totalRiderWages = riderRate * v.days * numberOfBikes;
+  const foodHotel = FIC_FOOD_HOTEL_PER_DAY * v.days * numberOfBikes;
+
+  const totalRevenue = v.ticketPrice * numberOfBikes;
+  const totalExpenses = fuelExpense + totalRiderWages + foodHotel;
+  const netProfit = totalRevenue - totalExpenses;
+
+  return {
+    numberOfBikes, fuelExpense, riderRate, totalRiderWages, foodHotel,
+    totalRevenue, totalExpenses, netProfit,
+    split: {
+      founder: netProfit * FIC_SPLIT.founder,
+      partnerB: netProfit * FIC_SPLIT.partnerB,
+      partnerC: netProfit * FIC_SPLIT.partnerC,
+      reserve: netProfit * FIC_SPLIT.reserve
+    }
+  };
+}
+
+function ficCalculate(){
+  const v = ficReadInputs();
+  const c = ficCompute(v);
+
+  document.getElementById('ficResults').innerHTML = `
+    <div class="fic-line"><span>Fuel (${v.distance}km ÷ ${FIC_KM_PER_LITER}km/L × ${ficNPR(v.petrolPrice)} × ${c.numberOfBikes} bikes)</span><span>${ficNPR(c.fuelExpense)}</span></div>
+    <div class="fic-line"><span>Rider wages (${ficNPR(c.riderRate)}/day × ${v.days}d × ${c.numberOfBikes})</span><span>${ficNPR(c.totalRiderWages)}</span></div>
+    <div class="fic-line"><span>Food &amp; accommodation (${ficNPR(FIC_FOOD_HOTEL_PER_DAY)}/day × ${v.days}d × ${c.numberOfBikes})</span><span>${ficNPR(c.foodHotel)}</span></div>
+    <div class="fic-line"><span>Total expenses</span><span>${ficNPR(c.totalExpenses)}</span></div>
+    <div class="fic-line"><span>Total revenue (${ficNPR(v.ticketPrice)} × ${c.numberOfBikes} passengers)</span><span>${ficNPR(c.totalRevenue)}</span></div>
+    <div class="fic-line fic-total-line ${c.netProfit < 0 ? 'negative' : ''}"><span>Net profit</span><span>${ficNPR(c.netProfit)}</span></div>
+    ${c.netProfit < 0 ? '<div class="fic-negative-warning">This quote loses money at the current ticket price — raise the price, cut costs, or add passengers before sending it out.</div>' : ''}
+  `;
+
+  document.getElementById('ficSplitBody').innerHTML = `
+    <tr><td>Lead Founder</td><td>40%</td><td>${ficNPR(c.split.founder)}</td></tr>
+    <tr><td>Partner B</td><td>20%</td><td>${ficNPR(c.split.partnerB)}</td></tr>
+    <tr><td>Partner C</td><td>20%</td><td>${ficNPR(c.split.partnerC)}</td></tr>
+    <tr><td>Company Reserve</td><td>20%</td><td>${ficNPR(c.split.reserve)}</td></tr>
+  `;
+
+  return { v, c };
+}
+
+/* =========================================================================
+   PDF EXPORT
+   Fills the off-screen #ficProposal with the current numbers, then hands
+   it to html2pdf. The div lives at left:-9999px so it never appears in
+   the normal page layout — html2pdf can still render an off-screen node.
+   ========================================================================= */
+function ficDownloadPdf(){
+  const { v, c } = ficCalculate();
+
+  document.getElementById('ficPDate').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('ficPDest').textContent = v.destination;
+  document.getElementById('ficPDist').textContent = v.distance + ' km';
+  document.getElementById('ficPDays').textContent = v.days + ' day' + (v.days > 1 ? 's' : '');
+  document.getElementById('ficPTerrain').textContent = v.terrain === 'highway' ? 'Highway' : 'Extreme Off-Road';
+  document.getElementById('ficPGroup').textContent = c.numberOfBikes + ' passenger + rider pair' + (c.numberOfBikes > 1 ? 's' : '');
+
+  document.getElementById('ficPExpenseTable').innerHTML = `
+    <tr><th>Item</th><th style="text-align:right;">Amount (NPR)</th></tr>
+    <tr><td>Fuel</td><td style="text-align:right;">${ficNPR(c.fuelExpense)}</td></tr>
+    <tr><td>Rider wages</td><td style="text-align:right;">${ficNPR(c.totalRiderWages)}</td></tr>
+    <tr><td>Food &amp; accommodation</td><td style="text-align:right;">${ficNPR(c.foodHotel)}</td></tr>
+    <tr class="fic-p-total"><td>Total expenses</td><td style="text-align:right;">${ficNPR(c.totalExpenses)}</td></tr>
+  `;
+
+  document.getElementById('ficPProfitTable').innerHTML = `
+    <tr><td>Total revenue</td><td style="text-align:right;">${ficNPR(c.totalRevenue)}</td></tr>
+    <tr><td>Total expenses</td><td style="text-align:right;">${ficNPR(c.totalExpenses)}</td></tr>
+    <tr class="fic-p-total"><td>Net profit</td><td style="text-align:right;">${ficNPR(c.netProfit)}</td></tr>
+  `;
+
+  document.getElementById('ficPSplitTable').innerHTML = `
+    <tr><th>Party</th><th>Share</th><th style="text-align:right;">Amount (NPR)</th></tr>
+    <tr><td>Lead Founder</td><td>40%</td><td style="text-align:right;">${ficNPR(c.split.founder)}</td></tr>
+    <tr><td>Partner B</td><td>20%</td><td style="text-align:right;">${ficNPR(c.split.partnerB)}</td></tr>
+    <tr><td>Partner C</td><td>20%</td><td style="text-align:right;">${ficNPR(c.split.partnerC)}</td></tr>
+    <tr><td>Company Reserve</td><td>20%</td><td style="text-align:right;">${ficNPR(c.split.reserve)}</td></tr>
+  `;
+
+  const el = document.getElementById('ficProposal');
+  const filename = `FeelIt-Quote-${v.destination.replace(/[^a-z0-9]+/gi, '-')}.pdf`;
+  html2pdf().set({
+    margin: 0,
+    filename,
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+  }).from(el).save();
+}
+
+// Run once on load so the panel isn't blank before the first keystroke.
+if (sessionStorage.getItem('feelit_admin_session')) ficCalculate();
+</script>
+</body>
+</html>
