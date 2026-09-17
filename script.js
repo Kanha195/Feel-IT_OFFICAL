@@ -172,6 +172,87 @@ function jsArg(str){
   return esc(String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 
+/* =========================================================================
+   WEATHER (Open-Meteo — free, no API key needed)
+   Any element rendered with class="weather-chip" and data-weather-pending
+   plus data-weather-lat / data-weather-lng (and optionally data-weather-date
+   as YYYY-MM-DD) gets filled in the next time hydrateWeatherChips() runs.
+   Call hydrateWeatherChips() right after you inject HTML containing chips —
+   it only touches chips still marked "pending" so it's safe to call often.
+   ========================================================================= */
+function weatherIcon(code){
+  if(code === 0) return '☀️';
+  if([1,2].includes(code)) return '🌤️';
+  if(code === 3) return '☁️';
+  if([45,48].includes(code)) return '🌫️';
+  if([51,53,55,56,57,80,81,82].includes(code)) return '🌦️';
+  if([61,63,65,66,67].includes(code)) return '🌧️';
+  if([71,73,75,77,85,86].includes(code)) return '❄️';
+  if([95,96,99].includes(code)) return '⛈️';
+  return '🌡️';
+}
+function weatherLabel(code){
+  const map = {
+    0:'Clear sky',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Freezing fog',
+    51:'Light drizzle',53:'Drizzle',55:'Dense drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+    61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+    71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+    80:'Rain showers',81:'Rain showers',82:'Violent rain showers',
+    85:'Snow showers',86:'Snow showers',95:'Thunderstorm',96:'Thunderstorm w/ hail',99:'Thunderstorm w/ hail'
+  };
+  return map[code] || 'Weather';
+}
+
+const weatherFetchCache = new Map();
+
+async function fetchWeatherFor(lat, lng, dateStr){
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}|${dateStr || ''}`;
+  if(weatherFetchCache.has(key)) return weatherFetchCache.get(key);
+
+  const promise = (async () => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=16`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if(dateStr && data.daily?.time){
+        const idx = data.daily.time.indexOf(dateStr);
+        if(idx > -1){
+          const code = data.daily.weathercode[idx];
+          const max = Math.round(data.daily.temperature_2m_max[idx]);
+          const min = Math.round(data.daily.temperature_2m_min[idx]);
+          return `${weatherIcon(code)} ${weatherLabel(code)}, ${min}°–${max}°C on your ride date`;
+        }
+        if(data.current_weather){
+          return `${weatherIcon(data.current_weather.weathercode)} Currently ${Math.round(data.current_weather.temperature)}°C at this location — the forecast for your exact date isn't out yet (only ~16 days ahead), check back closer to it`;
+        }
+      }
+      if(data.current_weather){
+        return `${weatherIcon(data.current_weather.weathercode)} Currently ${Math.round(data.current_weather.temperature)}°C, ${weatherLabel(data.current_weather.weathercode)}`;
+      }
+      return '';
+    } catch(e){
+      return '';
+    }
+  })();
+
+  weatherFetchCache.set(key, promise);
+  return promise;
+}
+
+function hydrateWeatherChips(root){
+  const scope = root || document;
+  const chips = scope.querySelectorAll('.weather-chip[data-weather-pending]');
+  chips.forEach(chip => {
+    chip.removeAttribute('data-weather-pending'); // claim immediately so a second call can't double-fetch it
+    const lat = parseFloat(chip.dataset.weatherLat), lng = parseFloat(chip.dataset.weatherLng);
+    if(Number.isNaN(lat) || Number.isNaN(lng)){ chip.remove(); return; }
+    fetchWeatherFor(lat, lng, chip.dataset.weatherDate || '').then(html => {
+      if(html) chip.innerHTML = html; else chip.remove();
+    });
+  });
+}
+
 function fmtNPR(n){
   const num = Number(n) || 0;
   return 'NPR ' + num.toLocaleString();
@@ -433,9 +514,7 @@ function initRouteBuilder(){
   if(!mapEl || typeof L === 'undefined') return; // section not on this page (e.g. gallery.html), or Leaflet failed to load
 
   routeMap = L.map('routeBuilderMap').setView([ROUTE_START.lat, ROUTE_START.lng], 8);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18, attribution: '© OpenStreetMap'
-  }).addTo(routeMap);
+  addMapLayerToggle(routeMap);
 
   L.marker([ROUTE_START.lat, ROUTE_START.lng])
     .addTo(routeMap)
@@ -594,12 +673,17 @@ async function getRoadDistanceKm(points, terrain){
   // remote tracks with no mapped road. The fallback is a rough ESTIMATE,
   // not a survey, and can be off by a fair margin on technical mountain
   // terrain — it's flagged as such in the UI whenever it's used.
+  // Also asks OSRM for the actual road geometry (not just the distance)
+  // so the map can draw the real route along the roads instead of a
+  // straight line between stops.
   try {
     const coords = points.map(p => `${p.lng},${p.lat}`).join(';');
-    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`);
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
     const data = await res.json();
     if(data && data.code === 'Ok' && data.routes && data.routes[0]){
-      return { km: data.routes[0].distance / 1000, source: 'road' };
+      const route = data.routes[0];
+      const geometry = (route.geometry?.coordinates || []).map(c => [c[1], c[0]]); // GeoJSON is [lng,lat] — Leaflet wants [lat,lng]
+      return { km: route.distance / 1000, durationMin: route.duration / 60, source: 'road', geometry };
     }
   } catch(e){ /* fall through to the estimate below */ }
 
@@ -608,7 +692,11 @@ async function getRoadDistanceKm(points, terrain){
     straight += haversineKm(points[i].lat, points[i].lng, points[i + 1].lat, points[i + 1].lng);
   }
   const factor = ROUTE_PRICING[terrain]?.roadFactor || 1.35;
-  return { km: straight * factor, source: 'estimate' };
+  const km = straight * factor;
+  // Rough time estimate when we have no real routing: ~35km/h on Nepal's
+  // mountain roads, slower again on off-road terrain.
+  const avgSpeed = terrain === 'offroad' ? 22 : 35;
+  return { km, durationMin: (km / avgSpeed) * 60, source: 'estimate', geometry: null };
 }
 
 async function recalcRouteEstimate(){
@@ -628,24 +716,39 @@ async function recalcRouteEstimate(){
   const passengers = Math.max(1, parseInt(document.getElementById('routePassengers')?.value, 10) || 1);
 
   const points = [ROUTE_START, ...routeStops];
-  const { km, source } = await getRoadDistanceKm(points, terrain);
+  const { km, durationMin, source, geometry } = await getRoadDistanceKm(points, terrain);
   if(myToken !== routeCalcToken) return; // a newer calculation started while this one was in flight — drop it
+
+  // Swap the straight preview line for the real road path, once we have it.
+  if(geometry && geometry.length && routeMap){
+    if(routeLine) routeMap.removeLayer(routeLine);
+    routeLine = L.polyline(geometry, { color: '#22d3ee', weight: 4, opacity: 0.85 }).addTo(routeMap);
+    routeMap.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+  }
 
   const rates = ROUTE_PRICING[terrain];
   const total = Math.round((rates.perKm * km + rates.perDayPerPerson * days) * passengers / 100) * 100;
+  const hours = Math.floor(durationMin / 60), mins = Math.round(durationMin % 60);
+  const timeLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const dest = routeStops[routeStops.length - 1];
 
   summaryEl.innerHTML = `
     <div class="route-summary-grid">
       <div><span>Distance</span><strong>${km.toFixed(0)} km</strong></div>
+      <div><span>Est. riding time</span><strong>${timeLabel}</strong></div>
       <div><span>Duration</span><strong>${days} day${days > 1 ? 's' : ''}</strong></div>
       <div><span>Passengers</span><strong>${passengers}</strong></div>
       <div><span>Terrain</span><strong>${terrain === 'highway' ? 'Highway' : 'Extreme Off-Road'}</strong></div>
     </div>
+    <div style="margin:10px 0;">
+      <span class="weather-chip" data-weather-pending data-weather-lat="${dest.lat}" data-weather-lng="${dest.lng}">Loading weather…</span>
+    </div>
     <div class="route-total"><span>Estimated package price</span><strong>${fmtNPR(total)}</strong></div>
-    ${source === 'estimate' ? `<p class="route-summary-note">Road-routing service unavailable for this route — showing a straight-line estimate instead. Actual distance on Nepal's mountain roads may be higher.</p>` : ''}
+    ${source === 'estimate' ? `<p class="route-summary-note">Road-routing service unavailable for this route — showing a straight-line estimate and rough time instead. Actual distance/time on Nepal's mountain roads may be higher.</p>` : ''}
     <p class="route-summary-note">This is an automatic estimate. We confirm the exact price once our team reviews the route.</p>
     <button type="button" class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="requestRouteQuote(${km.toFixed(0)}, ${days}, ${passengers}, '${terrain}', ${total})">Enquire about this route on WhatsApp</button>
   `;
+  hydrateWeatherChips(summaryEl);
 }
 
 function requestRouteQuote(km, days, passengers, terrain, total){
@@ -660,13 +763,51 @@ function initMap(){
 
   if(!leafletMap){
     leafletMap = L.map('tourMap').setView([28.2096, 83.9856], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '© OpenStreetMap'
-    }).addTo(leafletMap);
+    addMapLayerToggle(leafletMap);
   }
   renderMapMarkers();
   initTourMapSearch();
+}
+
+// Adds a free satellite/street toggle to any Leaflet map — street (OSM) is
+// on by default; the button switches to Esri's free World Imagery satellite
+// tiles (no API key needed) and back. Used by both the "Where we ride" map
+// and the route builder map so a customer can see actual terrain, not just
+// a flat street map, before picking a route.
+function addMapLayerToggle(map){
+  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18, attribution: '© OpenStreetMap'
+  }).addTo(map);
+  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 18, attribution: 'Tiles © Esri'
+  });
+
+  const control = L.control({ position: 'topright' });
+  const btnId = `mapLayerBtn-${L.stamp(map)}`;
+  control.onAdd = function(){
+    const div = L.DomUtil.create('div', 'map-layer-toggle');
+    div.innerHTML = `<button type="button" class="map-layer-btn" id="${btnId}">🛰️ Satellite</button>`;
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
+  control.addTo(map);
+
+  let showingSatellite = false;
+  const btn = document.getElementById(btnId);
+  if(btn){
+    btn.addEventListener('click', () => {
+      showingSatellite = !showingSatellite;
+      if(showingSatellite){
+        map.removeLayer(streetLayer);
+        satelliteLayer.addTo(map);
+        btn.textContent = '🗺️ Map';
+      } else {
+        map.removeLayer(satelliteLayer);
+        streetLayer.addTo(map);
+        btn.textContent = '🛰️ Satellite';
+      }
+    });
+  }
 }
 
 /* ---------------- Search box on the "Where we ride" map ----------------
@@ -790,6 +931,7 @@ function openTour(id){
     <div class="card-region">${esc(t.region)} · ${esc(t.duration)}</div>
     <h2>${esc(t.title)}</h2>
     ${ratingBadge(t.id)}
+    ${t.lat && t.lng ? `<div style="margin:6px 0 12px;"><span class="weather-chip" data-weather-pending data-weather-lat="${t.lat}" data-weather-lng="${t.lng}">Loading weather…</span></div>` : ''}
     <p class="sub">${esc(t.desc)}</p>
     <ul class="include-list">${(t.includes||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul>
     <div class="guide-box">
@@ -811,6 +953,7 @@ function openTour(id){
   `;
   showOverlay();
   renderTourReviews(t.id);
+  hydrateWeatherChips(document.getElementById('modalContent'));
 }
 
 /* ---------------- Reviews on a tour ---------------- */
@@ -1199,6 +1342,7 @@ async function renderUserDashboard(user){
 
   const holder = document.getElementById('dashboardMessages');
   if(holder) await renderMessageThreadInto(holder, user.email, user.name, { context: 'dashboard' });
+  hydrateWeatherChips(document.getElementById('modalContent'));
 }
 
 function renderBookingRowForUser(b){
@@ -1215,6 +1359,11 @@ function renderBookingRowForUser(b){
     riderBlock = `<div class="pending-note">Payment verification in progress — your rider will appear here once confirmed.</div>`;
   }
 
+  const tourRef = tours.find(t => t.id === b.tour_id);
+  const weatherBlock = tourRef?.lat && tourRef?.lng
+    ? `<div style="margin-top:6px;"><span class="weather-chip" data-weather-pending data-weather-lat="${tourRef.lat}" data-weather-lng="${tourRef.lng}" data-weather-date="${esc(b.date || '')}">Loading weather…</span></div>`
+    : '';
+
   return `
     <div class="booking-row" style="flex-direction:column;align-items:stretch;">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;">
@@ -1222,6 +1371,7 @@ function renderBookingRowForUser(b){
         <span class="status ${statusClass}">${esc(b.status || 'Pending')}</span>
       </div>
       <div style="font-size:13px;color:var(--ink-soft);margin-top:4px;">Date: ${esc(b.date)} · Ref: ${esc(b.ref)} · Paid via ${esc(PAYMENT_METHODS[b.payment_method]?.label || b.payment_method || '—')}</div>
+      ${weatherBlock}
       ${riderBlock}
     </div>
   `;
@@ -1589,6 +1739,7 @@ async function renderAdminPanel(tab){
     <div>${body}</div>
   `;
   showOverlay();
+  hydrateWeatherChips(modalEl);
 }
 
 // One booking row in the admin panel. Pending bookings get an inline
@@ -1597,6 +1748,10 @@ async function renderAdminPanel(tab){
 function renderBookingRowForAdmin(b){
   const statusClass = b.status === 'Confirmed' ? 'status-confirmed' : (b.status === 'Cancelled' ? 'status-cancelled' : 'status-pending');
   const methodLabel = PAYMENT_METHODS[b.payment_method]?.label || b.payment_method || '—';
+  const tourRef = tours.find(t => t.id === b.tour_id);
+  const weatherBlock = tourRef?.lat && tourRef?.lng
+    ? `<div style="margin-top:6px;"><span class="weather-chip" data-weather-pending data-weather-lat="${tourRef.lat}" data-weather-lng="${tourRef.lng}" data-weather-date="${esc(b.date || '')}">Loading weather…</span></div>`
+    : '';
 
   let actionBlock = '';
   if(b.status === 'Confirmed'){
@@ -1631,6 +1786,7 @@ function renderBookingRowForAdmin(b){
         Customer: ${esc(b.name)} (${esc(b.email)} · ${esc(b.phone)})<br>
         Paid via <strong>${esc(methodLabel)}</strong> · Txn Ref: <strong>${esc(b.txn_ref)}</strong> · Total: ${fmtNPR(b.total)}
       </div>
+      ${weatherBlock}
       ${actionBlock}
     </div>
   `;
