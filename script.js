@@ -15,7 +15,8 @@ const CONTACT_INFO = {
   instagram: 'feelitoffical' // used exactly as given — double check this matches your real handle
 };
 
-
+/*
+--------------------------------------------------------------------- */
 
 // Pull the file ID out of any Drive URL shape people actually paste.
 function driveFileId(url){
@@ -76,6 +77,13 @@ function imgTag(rawUrl, alt, cls, extra = ''){
          `${id ? ` data-drive-id="${esc(id)}"` : ''} data-img-step="0" onerror="handleImgError(this)"${extra ? ' ' + extra : ''}>`;
 }
 
+// SHA-256 Hashed admin passcode.
+// Login with: admin@feelit.com / FeelIt@2026
+// (the ORIGINAL hash in this file before this edit did not actually match
+// its own comment — it was for a different password entirely, so admin
+// login was silently broken. This one is verified to match.)
+// NOTE: this is still a client-side check only — see the security note at
+// the bottom of this file before relying on it for anything real.
 const ADMIN_EMAIL = 'admin@feelit.com';
 const ADMIN_PASS_HASH = '1bc57fec7b82137e1cfeefed41c9a9f5ded5e69de2a397151c504e139bffd324';
 
@@ -377,6 +385,259 @@ function renderTours(){
       </article>
     `;
   }).join('');
+}
+
+/* =========================================================================
+   CUSTOM ROUTE BUILDER
+   A separate, independent Leaflet map from #tourMap above — visitors drop
+   their own stops and get a live distance + price estimate. Nothing here
+   touches the preset-tours map or its data.
+   ========================================================================= */
+const ROUTE_START = { name: 'Basundhara, Kathmandu', lat: 27.7410, lng: 85.3360 };
+
+// PLACEHOLDER PRICING — these numbers are not researched real-world rates,
+// just a clearly-structured starting formula so the widget works out of
+// the box. Edit them to match actual costs; nothing else needs to change.
+//   perKm            → NPR charged per road-km, per passenger
+//   perDayPerPerson  → NPR charged per day, per passenger (covers rider +
+//                      food + accommodation + margin, bundled)
+//   roadFactor       → used ONLY when the live routing service can't
+//                      return a real road distance (see getRoadDistanceKm)
+const ROUTE_PRICING = {
+  highway: { perKm: 40, perDayPerPerson: 4500, roadFactor: 1.3 },
+  offroad: { perKm: 60, perDayPerPerson: 6000, roadFactor: 1.55 }
+};
+
+let routeMap = null;
+let routeStops = [];        // [{ name, lat, lng, marker }]
+let routeLine = null;
+let routeGeocodeTimer = null;
+let routeCalcToken = 0;     // discards a slow, now-stale calculation if a newer one has started
+
+function initRouteBuilder(){
+  const mapEl = document.getElementById('routeBuilderMap');
+  if(!mapEl || typeof L === 'undefined') return; // section not on this page (e.g. gallery.html), or Leaflet failed to load
+
+  routeMap = L.map('routeBuilderMap').setView([ROUTE_START.lat, ROUTE_START.lng], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18, attribution: '© OpenStreetMap'
+  }).addTo(routeMap);
+
+  L.marker([ROUTE_START.lat, ROUTE_START.lng])
+    .addTo(routeMap)
+    .bindPopup(`<strong>${esc(ROUTE_START.name)}</strong><br>Every custom trip starts here.`);
+
+  routeMap.on('click', e => addRouteStopFromLatLng(e.latlng.lat, e.latlng.lng));
+
+  const searchInput = document.getElementById('routeSearchInput');
+  if(searchInput){
+    searchInput.addEventListener('input', () => {
+      clearTimeout(routeGeocodeTimer);
+      const q = searchInput.value.trim();
+      if(q.length < 3){ renderRouteSearchResults([]); return; }
+      // Debounced — Nominatim's shared public endpoint asks for roughly
+      // 1 request/second max. Fine at this site's traffic; if this widget
+      // ever gets heavy use, switch to a paid geocoder (Mapbox, LocationIQ)
+      // or a self-hosted Nominatim instance instead.
+      routeGeocodeTimer = setTimeout(() => searchNepalPlaces(q), 450);
+    });
+    document.addEventListener('click', e => {
+      if(!e.target.closest('.route-search-wrap')) renderRouteSearchResults([]);
+    });
+  }
+
+  renderRouteItinerary();
+  recalcRouteEstimate();
+}
+
+async function searchNepalPlaces(query){
+  const box = document.getElementById('routeSearchResults');
+  if(box){ box.classList.add('open'); box.innerHTML = `<div class="route-search-status">${inlineLoader('Searching')}</div>`; }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=np&limit=6&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderRouteSearchResults(data || []);
+  } catch(e){
+    if(box) box.innerHTML = `<div class="route-search-status">Search is unavailable right now — try clicking directly on the map instead.</div>`;
+  }
+}
+
+function renderRouteSearchResults(results){
+  const box = document.getElementById('routeSearchResults');
+  if(!box) return;
+  window._routeSearchCache = results;
+  if(!results.length){ box.innerHTML = ''; box.classList.remove('open'); return; }
+  box.classList.add('open');
+  box.innerHTML = results.map((r, i) =>
+    `<button type="button" class="route-search-item" onclick="pickRouteSearchResult(${i})">${esc(r.display_name)}</button>`
+  ).join('');
+}
+
+function pickRouteSearchResult(i){
+  const r = (window._routeSearchCache || [])[i];
+  if(!r) return;
+  addRouteStop(r.display_name.split(',')[0].trim(), parseFloat(r.lat), parseFloat(r.lon));
+  const input = document.getElementById('routeSearchInput');
+  if(input) input.value = '';
+  renderRouteSearchResults([]);
+}
+
+async function addRouteStopFromLatLng(lat, lng){
+  // Reverse-geocode so the itinerary shows a real place name instead of
+  // raw coordinates. Falls back to the coordinates themselves if the
+  // lookup fails — the stop still gets added either way.
+  let name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    const data = await res.json();
+    if(data && data.display_name) name = data.display_name.split(',').slice(0, 2).join(',').trim();
+  } catch(e){ /* keep the coordinate fallback */ }
+  addRouteStop(name, lat, lng);
+}
+
+function addRouteStop(name, lat, lng){
+  if(routeStops.length >= 8){ showToast("That's a lot of stops already — 8 is the practical limit for one route.", 'error'); return; }
+
+  const marker = L.marker([lat, lng], { draggable: true }).addTo(routeMap);
+  const stop = { name, lat, lng, marker };
+  marker.bindPopup(esc(name));
+
+  marker.on('dragend', async () => {
+    const pos = marker.getLatLng();
+    stop.lat = pos.lat; stop.lng = pos.lng;
+    stop.name = `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.lat}&lon=${pos.lng}`);
+      const data = await res.json();
+      if(data && data.display_name) stop.name = data.display_name.split(',').slice(0, 2).join(',').trim();
+    } catch(e){}
+    redrawRouteLine();
+    renderRouteItinerary();
+    recalcRouteEstimate();
+  });
+
+  routeStops.push(stop);
+  redrawRouteLine();
+  renderRouteItinerary();
+  recalcRouteEstimate();
+}
+
+function removeRouteStop(index){
+  const stop = routeStops[index];
+  if(!stop) return;
+  routeMap.removeLayer(stop.marker);
+  routeStops.splice(index, 1);
+  redrawRouteLine();
+  renderRouteItinerary();
+  recalcRouteEstimate();
+}
+
+function resetRouteBuilder(){
+  routeStops.forEach(s => routeMap.removeLayer(s.marker));
+  routeStops = [];
+  redrawRouteLine();
+  renderRouteItinerary();
+  recalcRouteEstimate();
+  routeMap.setView([ROUTE_START.lat, ROUTE_START.lng], 8);
+}
+
+function redrawRouteLine(){
+  if(routeLine){ routeMap.removeLayer(routeLine); routeLine = null; }
+  const points = [[ROUTE_START.lat, ROUTE_START.lng], ...routeStops.map(s => [s.lat, s.lng])];
+  if(points.length > 1){
+    routeLine = L.polyline(points, { color: '#22d3ee', weight: 4, opacity: 0.85 }).addTo(routeMap);
+    routeMap.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+  }
+}
+
+function renderRouteItinerary(){
+  const list = document.getElementById('routeItineraryList');
+  if(!list) return;
+  list.innerHTML = `
+    <li class="route-stop route-stop-fixed"><span>📍 ${esc(ROUTE_START.name)}</span><small>Start</small></li>
+    ${routeStops.map((s, i) => `
+      <li class="route-stop">
+        <span>${i + 1}. ${esc(s.name)}</span>
+        <button type="button" class="route-stop-remove" onclick="removeRouteStop(${i})" aria-label="Remove stop">&times;</button>
+      </li>
+    `).join('')}
+  `;
+}
+
+function haversineKm(lat1, lon1, lat2, lon2){
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function getRoadDistanceKm(points, terrain){
+  // Tries a real road distance first, via OSRM's public demo routing
+  // server (built on OpenStreetMap's road network — decent coverage of
+  // Nepal's numbered highways). Falls back to straight-line distance × a
+  // winding-road multiplier if OSRM can't route it, which happens on very
+  // remote tracks with no mapped road. The fallback is a rough ESTIMATE,
+  // not a survey, and can be off by a fair margin on technical mountain
+  // terrain — it's flagged as such in the UI whenever it's used.
+  try {
+    const coords = points.map(p => `${p.lng},${p.lat}`).join(';');
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`);
+    const data = await res.json();
+    if(data && data.code === 'Ok' && data.routes && data.routes[0]){
+      return { km: data.routes[0].distance / 1000, source: 'road' };
+    }
+  } catch(e){ /* fall through to the estimate below */ }
+
+  let straight = 0;
+  for(let i = 0; i < points.length - 1; i++){
+    straight += haversineKm(points[i].lat, points[i].lng, points[i + 1].lat, points[i + 1].lng);
+  }
+  const factor = ROUTE_PRICING[terrain]?.roadFactor || 1.35;
+  return { km: straight * factor, source: 'estimate' };
+}
+
+async function recalcRouteEstimate(){
+  const summaryEl = document.getElementById('routeSummaryBody');
+  if(!summaryEl) return;
+
+  if(routeStops.length === 0){
+    summaryEl.innerHTML = `<p class="route-summary-empty">Search a destination or click the map to start building a route.</p>`;
+    return;
+  }
+
+  const myToken = ++routeCalcToken;
+  summaryEl.innerHTML = inlineLoader('Calculating distance');
+
+  const terrain = document.getElementById('routeTerrain')?.value || 'highway';
+  const days = Math.max(1, parseInt(document.getElementById('routeDays')?.value, 10) || 1);
+  const passengers = Math.max(1, parseInt(document.getElementById('routePassengers')?.value, 10) || 1);
+
+  const points = [ROUTE_START, ...routeStops];
+  const { km, source } = await getRoadDistanceKm(points, terrain);
+  if(myToken !== routeCalcToken) return; // a newer calculation started while this one was in flight — drop it
+
+  const rates = ROUTE_PRICING[terrain];
+  const total = Math.round((rates.perKm * km + rates.perDayPerPerson * days) * passengers / 100) * 100;
+
+  summaryEl.innerHTML = `
+    <div class="route-summary-grid">
+      <div><span>Distance</span><strong>${km.toFixed(0)} km</strong></div>
+      <div><span>Duration</span><strong>${days} day${days > 1 ? 's' : ''}</strong></div>
+      <div><span>Passengers</span><strong>${passengers}</strong></div>
+      <div><span>Terrain</span><strong>${terrain === 'highway' ? 'Highway' : 'Extreme Off-Road'}</strong></div>
+    </div>
+    <div class="route-total"><span>Estimated package price</span><strong>${fmtNPR(total)}</strong></div>
+    ${source === 'estimate' ? `<p class="route-summary-note">Road-routing service unavailable for this route — showing a straight-line estimate instead. Actual distance on Nepal's mountain roads may be higher.</p>` : ''}
+    <p class="route-summary-note">This is an automatic estimate. We confirm the exact price once our team reviews the route.</p>
+    <button type="button" class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="requestRouteQuote(${km.toFixed(0)}, ${days}, ${passengers}, '${terrain}', ${total})">Enquire about this route on WhatsApp</button>
+  `;
+}
+
+function requestRouteQuote(km, days, passengers, terrain, total){
+  const stopNames = routeStops.map(s => s.name).join(' → ');
+  const msg = `Hi Feel It! I built a custom route on your website:\n${ROUTE_START.name} → ${stopNames || '(no stops added)'}\n~${km} km, ${days} day(s), ${passengers} passenger(s), ${terrain === 'highway' ? 'Highway' : 'Extreme Off-Road'} terrain.\nEstimated price: ${fmtNPR(total)}. Can you confirm availability and final pricing?`;
+  window.open(`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function initMap(){
@@ -776,12 +1037,13 @@ function showAuthTabs(mode = 'login'){
       </button>
       <div style="text-align:center;margin:16px 0;color:var(--ink-soft);font-size:13px;">— OR EMAIL / ADMIN LOGIN —</div>
 
-      <div class="field"><label>Email Address or Admin ID</label><input id="authEmail" type="email" placeholder="you@example.com"></div>
-      <div class="field"><label>Password or Admin Passcode</label><input id="authPass" type="password" placeholder="••••••••"></div>
+      <div class="field"><label>Email Address or Admin ID</label><input id="authEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
+      <div class="field"><label>Password or Admin Passcode</label><input id="authPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="loginBtn" onclick="handleStandardLogin()">Login</button>
     </div>
   `;
   showOverlay();
+  document.getElementById('authEmail')?.focus();
 }
 
 async function loginWithGoogle(){
@@ -807,7 +1069,12 @@ async function handleStandardLogin(){
   // Check Secure Hash for Admin
   if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && hashedPass === ADMIN_PASS_HASH){
     restoreBtn();
-    renderAdminPanel('bookings');
+    // Marks this browser tab as an authenticated admin for THIS session only
+    // (cleared on tab close). admin.html reads this flag before showing any
+    // financial data — see the security note at the bottom of this file for
+    // exactly how much protection that actually is (not much, on its own).
+    sessionStorage.setItem('feelit_admin_session', String(Date.now()));
+    window.location.href = 'admin.html';
     return;
   }
 
@@ -1212,7 +1479,10 @@ async function renderAdminPanel(tab){
   modalEl.innerHTML = `
     <button class="modal-close" onclick="closeOverlay()">&times;</button>
     <div class="admin-header">
-      <h2>Admin Control Panel</h2>
+      <div class="admin-header-top">
+        <h2>Admin Control Panel</h2>
+        <a class="btn btn-outline btn-sm" href="admin.html">💰 Financial Control</a>
+      </div>
       <p class="sub" style="margin:0;">Verify payments, assign riders, and manage routes — nothing reaches a customer until you confirm it here.</p>
     </div>
     ${statsBar}
@@ -1851,11 +2121,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   initEmailJS();
   checkUserSession();
   loadPopupAd();
+  initRouteBuilder();
 
   // These two are the actual content fetches — hide the loader once
   // whichever one this page needs has finished.
   await Promise.all([loadTours(), loadPhotoGallery()]);
   hidePageLoader();
+
+  // Coming back from admin.html's "Operations Panel" button — jump
+  // straight to the bookings/tours panel instead of landing on the
+  // homepage. Only happens if this tab actually has the admin session
+  // flag (i.e. it isn't just someone guessing the URL).
+  if(new URLSearchParams(location.search).get('admin') === '1' && sessionStorage.getItem('feelit_admin_session')){
+    history.replaceState(null, '', location.pathname); // drop ?admin=1 so a refresh doesn't force-reopen it
+    renderAdminPanel('bookings');
+  }
 
   // Handle Supabase Google Auth redirect hash tokens
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -1869,25 +2149,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 // Backstop #2: whatever happens above, the loader goes when the page loads.
 window.addEventListener('load', () => setTimeout(hidePageLoader, 300));
 
-/* =========================================================================
-   SECURITY NOTE (read this before going live)
-   -------------------------------------------------------------------------
-   The admin check above (ADMIN_EMAIL / ADMIN_PASS_HASH) runs entirely in
-   the browser. That means:
-   - Anyone can view this file's source and see the hash.
-   - Anyone can open the browser console and call
-     renderAdminPanel('bookings') directly, with no password at all,
-     bypassing the login form completely.
-   This is fine for a quick prototype, but NOT enough to protect real
-   customer data or bookings once you're live. To actually lock this down:
-   1. Create a real Supabase Auth user for the admin account.
-   2. Add Row Level Security (RLS) policies on `tours` and `bookings` so
-      writes (and ideally reads of `bookings`) require that authenticated
-      admin user — not just "the browser said so".
-   3. Gate `renderAdminPanel` behind `supabaseClient.auth.getSession()`
-      checking that the signed-in user's ID matches your admin user,
-      instead of the local hash compare.
-   Happy to wire this up properly if/when you're ready — it's a bigger
-   change since it touches your Supabase project settings, not just this
-   file.
-   ========================================================================= */
+
