@@ -677,6 +677,9 @@ footer .social-btn{background:transparent;}
 .link-with-preview{display:flex;gap:8px;align-items:stretch;}
 .link-with-preview input{flex:1;min-width:0;}
 .link-with-preview .btn{white-space:nowrap;padding:.55rem 1.1rem;font-size:14px;}
+.admin-photo-upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.admin-photo-upload-row input[type="file"]{flex:0 0 auto;max-width:200px;font-size:13px;}
+.admin-photo-upload-row .form-note{margin:0;white-space:nowrap;}
 .img-preview{margin-top:10px;}
 .img-preview-frame{
   position:relative;border:1px solid var(--line);border-radius:var(--radius);
@@ -724,6 +727,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .modal h2{font-size:30px;}
   .link-with-preview{flex-direction:column;}
   .link-with-preview .btn{width:100%;}
+  .admin-photo-upload-row{flex-direction:column;align-items:stretch;}
+  .admin-photo-upload-row input[type="file"]{max-width:none;}
   .admin-tour-head{align-items:flex-start;}
   .gallery-toolbar{flex-direction:column;align-items:flex-start;gap:10px;}
 }
