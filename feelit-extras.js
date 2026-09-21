@@ -1,4 +1,10 @@
-
+/* feelit-extras.js — load AFTER feelit-upgrade.js (index.html only):
+   <script src="feelit-extras.js"></script>
+   Adds: family + high-altitude safety section, sample GPS tracker, weather effects
+   (rain / snow / fog / thunderstorm / clear) in the tour modal AND site-wide.
+   Lag-safe: the tracker ticks every 2.6s and pauses off-screen / in background tabs;
+   weather effects are a small, fixed number of GPU-only CSS elements (transform/opacity
+   only, no layout thrash), pause off-screen/hidden-tab, and respect "reduce motion". */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -22,15 +28,42 @@
     .fi-dot{transition:transform 2.4s linear;fill:var(--primary);filter:drop-shadow(0 0 4px var(--primary-glow))}
     .fi-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;font-size:12px;color:var(--ink-soft)}
     .fi-stats b{display:block;color:var(--ink);font-size:15px}
-    .fi-fx{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;border-radius:inherit;opacity:.55}
-    .fi-fx i{position:absolute;top:-20px;display:block;will-change:transform;animation:fiFall linear infinite}
-    .fi-rain i{width:1px;height:16px;background:rgba(148,197,255,.7)}
-    .fi-snow i{width:5px;height:5px;border-radius:50%;background:#fff}
-    .fi-fog{background:linear-gradient(180deg,rgba(203,213,225,.22),rgba(203,213,225,.03));animation:fiDrift 12s ease-in-out infinite alternate}
-    .fi-clear{background:radial-gradient(circle at 88% 0,rgba(250,204,21,.28),transparent 45%)}
-    @keyframes fiFall{to{transform:translate3d(-24px,110vh,0)}}
-    @keyframes fiDrift{to{transform:translateX(4%)}}
-    @media (prefers-reduced-motion:reduce){.fi-fx,.fi-fx i,.fi-live{animation:none!important}}
+
+    /* ---- Weather effects (tour modal scope: .fi-fx) ---- */
+    .fi-fx{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;border-radius:inherit;opacity:.6}
+    .fi-fx.fi-fog{opacity:.85} /* the fog "haze" itself is already faint — see .fi-cloud below */
+
+    .fi-fx .fi-drop{position:absolute;top:-24px;width:1.5px;border-radius:2px;
+      background:linear-gradient(rgba(190,215,255,0),rgba(190,215,255,.8));
+      transform:rotate(9deg);animation-name:fiRainFall;animation-timing-function:linear;animation-iteration-count:infinite;will-change:transform}
+    .fi-fx.fi-thunder .fi-drop{background:linear-gradient(rgba(214,196,255,0),rgba(214,196,255,.85))}
+    @keyframes fiRainFall{to{transform:translate3d(-20px,130%,0) rotate(9deg)}}
+
+    .fi-fx .fi-flake{position:absolute;top:-12px;border-radius:50%;
+      background:radial-gradient(circle,#fff,rgba(255,255,255,.55) 70%);
+      animation-name:fiSnowFall,fiSnowSway;animation-timing-function:linear,ease-in-out;
+      animation-iteration-count:infinite,infinite;animation-direction:normal,alternate;will-change:transform}
+    @keyframes fiSnowFall{to{transform:translateY(130%)}}
+    @keyframes fiSnowSway{from{margin-left:-12px}to{margin-left:12px}}
+
+    .fi-fx.fi-fog{background:linear-gradient(180deg,rgba(203,213,225,.14),rgba(203,213,225,.03))}
+    .fi-fx .fi-cloud{position:absolute;left:-35%;height:46%;border-radius:50%;
+      background:radial-gradient(ellipse,rgba(226,232,240,.85),rgba(226,232,240,0) 70%);
+      filter:blur(18px);animation:fiCloudDrift linear infinite;will-change:transform}
+    @keyframes fiCloudDrift{to{transform:translateX(165%)}}
+
+    .fi-fx.fi-clear{background:radial-gradient(circle at 88% 0,rgba(250,204,21,.28),transparent 45%)}
+
+    .fi-fx.fi-thunder{background:linear-gradient(180deg,rgba(76,29,149,.4),rgba(12,4,26,.6))}
+    .fi-fx .fi-bolt{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;
+      background:radial-gradient(ellipse at 30% -10%,rgba(232,224,255,.95),transparent 55%)}
+    .fi-fx .fi-bolt.fi-bolt-on{animation:fiBoltPulse .22s ease-out}
+    .fi-fx .fi-flash{position:absolute;inset:0;background:#f5f0ff;opacity:0;mix-blend-mode:overlay}
+    .fi-fx .fi-flash.fi-flash-on{animation:fiFlashPulse .22s ease-out}
+    @keyframes fiBoltPulse{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+    @keyframes fiFlashPulse{0%{opacity:0}15%{opacity:.8}100%{opacity:0}}
+
+    @media (prefers-reduced-motion:reduce){.fi-fx *,.fi-fx,.fi-live{animation:none!important}}
   </style>`);
 
   /* ---- Family + high-altitude safety section (inserted after #safety) ---- */
@@ -95,9 +128,9 @@
     document.addEventListener('visibilitychange', sync);
   }
 
-  /* ---- Weather effects in the tour modal ----
-     Admin/testing:  feelitFx.off() / feelitFx.on()  ·  feelitFx.preview('snow'|'rain'|'fog'|'clear')
-     or open the site with ?fx=snow to force a preview. */
+  /* ---- Weather effects: shared "recipe" for both the tour modal and the site-wide layer ----
+     Admin/testing:  feelitFx.off() / feelitFx.on()  ·  feelitFx.preview('snow'|'rain'|'fog'|'thunder'|'clear')
+     or open the site with ?fx=rain (also snow / fog / thunder / clear) to force a preview. */
   const wxCache = new Map();
   async function weatherKind(lat, lng) {
     const k = lat.toFixed(1) + ',' + lng.toFixed(1);
@@ -107,26 +140,89 @@
     }
     const c = await wxCache.get(k);
     if (c == null) return null;
-    if ([71, 73, 75, 77, 85, 86].includes(c)) return 'snow';
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(c)) return 'rain';
-    if ([45, 48].includes(c)) return 'fog';
-    return c <= 1 ? 'clear' : null;
+    if ([95, 96, 99].includes(c)) return 'thunder';                                     // thunderstorm
+    if ([71, 73, 75, 77, 85, 86].includes(c)) return 'snow';                            // snow / snow showers
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(c)) return 'rain'; // drizzle / rain / showers
+    if ([45, 48].includes(c)) return 'fog';                                             // fog / freezing fog
+    return c <= 1 ? 'clear' : null;                                                     // 0/1 = clear/mainly clear
+  }
+
+  // Builds the inner elements for one weather "kind". Reused by both the modal effect
+  // and the site-wide layer so the physics (fall speed, sway, drift) match everywhere.
+  // Element counts are intentionally small and fixed — no per-frame DOM work, ever.
+  function buildBits(kind, big) {
+    if (kind === 'rain' || kind === 'thunder') {
+      const n = big ? (kind === 'thunder' ? 30 : 24) : (kind === 'thunder' ? 24 : 18);
+      let out = '';
+      for (let j = 0; j < n; j++) {
+        const dur = 0.55 + (j % 6) * 0.13;                 // varied fall speed = depth
+        const len = 14 + (j % 5) * 6;                      // varied streak length
+        out += `<i class="fi-drop" style="left:${(j * 61) % 100}%;height:${len}px;animation-delay:-${((j * 0.41) % 3).toFixed(2)}s;animation-duration:${dur}s"></i>`;
+      }
+      if (kind === 'thunder') out += `<div class="fi-bolt"></div><div class="fi-flash"></div>`;
+      return out;
+    }
+    if (kind === 'snow') {
+      const n = big ? 20 : 14;
+      let out = '';
+      for (let j = 0; j < n; j++) {
+        const size = 3 + (j % 4) * 2;
+        const fallDur = 7 + (j % 6);
+        const swayDur = 3 + (j % 4);
+        out += `<i class="fi-flake" style="left:${(j * 53) % 100}%;width:${size}px;height:${size}px;` +
+          `opacity:${(0.35 + (j % 5) * 0.12).toFixed(2)};` +
+          `animation-duration:${fallDur}s,${swayDur}s;` +
+          `animation-delay:-${((j * 0.7) % 5).toFixed(2)}s,-${((j * 0.3) % 3).toFixed(2)}s"></i>`;
+      }
+      return out;
+    }
+    if (kind === 'fog') {
+      // A faint uniform haze (from the CSS background) plus a few large, slow,
+      // blurred "cloud" bands drifting across at different heights/speeds — this
+      // reads as real rolling fog without ever covering the page solidly, so
+      // text stays readable underneath it.
+      const bands = [
+        { top: '2%', w: 75, dur: 42, op: .8 },
+        { top: '28%', w: 95, dur: 58, op: .55 },
+        { top: '55%', w: 85, dur: 50, op: .7 },
+        { top: '78%', w: 100, dur: 65, op: .45 }
+      ];
+      return bands.map((b, i) => `<span class="fi-cloud" style="top:${b.top};width:${b.w}%;opacity:${b.op};animation-duration:${b.dur}s;animation-delay:-${i * 9}s"></span>`).join('');
+    }
+    return ''; // clear — the glow is pure CSS background, no elements needed
+  }
+
+  // Thunderstorms get occasional random lightning flashes. One self-cancelling
+  // timer per container (modal vs. site-wide), so switching weather never leaks timers.
+  function flashLoop(container, tok) {
+    const my = ++tok.n;
+    const fire = () => {
+      if (my !== tok.n) return; // superseded by a repaint — stop quietly
+      const bolt = container.querySelector('.fi-bolt'), flash = container.querySelector('.fi-flash');
+      if (bolt && flash && !reduce) {
+        bolt.classList.add('fi-bolt-on'); flash.classList.add('fi-flash-on');
+        setTimeout(() => { bolt.classList.remove('fi-bolt-on'); flash.classList.remove('fi-flash-on'); }, 240);
+      }
+      setTimeout(fire, 4500 + Math.random() * 7000);
+    };
+    setTimeout(fire, 1200 + Math.random() * 2500);
   }
 
   function paint(kind) {
     const m = $('modalContent');
     if (!m) return;
     m.querySelectorAll('.fi-fx').forEach(el => el.remove());
+    modalFlashTok.n++; // cancel any pending flash loop from the previous kind
     if (!kind) return;
     if (getComputedStyle(m).position === 'static') m.style.position = 'relative';
-    const n = kind === 'rain' ? 22 : kind === 'snow' ? 16 : 0;
-    let bits = '';
-    for (let j = 0; j < n; j++) {
-      const dur = kind === 'rain' ? 0.9 + (j % 4) * 0.15 : 5 + (j % 5);
-      bits += `<i style="left:${(j * 97) % 100}%;animation-delay:-${((j * 0.37) % 3).toFixed(2)}s;animation-duration:${dur}s"></i>`;
-    }
-    m.insertAdjacentHTML('afterbegin', `<div class="fi-fx fi-${kind}" aria-hidden="true">${bits}</div>`);
+    const wrap = document.createElement('div');
+    wrap.className = `fi-fx fi-${kind}`;
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.innerHTML = buildBits(kind, false);
+    m.insertAdjacentElement('afterbegin', wrap);
+    if (kind === 'thunder' && !reduce) flashLoop(wrap, modalFlashTok);
   }
+  const modalFlashTok = { n: 0 };
 
   // Site-wide switch set in Admin › Tours (site_settings table); missing table/row = effects on.
   let fxOffP;
@@ -151,38 +247,54 @@
   };
 
   /* ---- Site-wide weather layer (the fixed #fiSiteFx div in index.html) ----
-     Shows the CURRENT weather at Feel It's Basundhara, Kathmandu base on every
-     page — home, gallery, admin — behind the content, click-through.
+     Asks the VISITOR for location permission and, if they allow it, shows the
+     real current weather at THEIR location. If they decline, it's not
+     supported, or the request times out, it falls back to Feel It's
+     Basundhara, Kathmandu base — so it always shows something sensible.
      Same on/off switch and ?fx= override as the tour-modal effect above. */
-  const HQ_LAT = 27.7410, HQ_LNG = 85.3360; // Basundhara, Kathmandu (CONTACT_INFO.address)
-  let siteKind = null, siteTimer = null;
+  const HQ_LAT = 27.7410, HQ_LNG = 85.3360; // Basundhara, Kathmandu (CONTACT_INFO.address) — fallback only
+  const siteFlashTok = { n: 0 };
+  let siteTimer = null;
+
+  // Asked at most once per page load. Browsers already remember the visitor's
+  // choice (granted/denied) across visits, so this never nags on repeat visits.
+  let geoAsked = false, clientLoc = null; // clientLoc stays null forever if declined/unavailable
+  function getClientLocation() {
+    return new Promise(resolve => {
+      if (clientLoc) return resolve(clientLoc);
+      if (geoAsked || !('geolocation' in navigator)) return resolve(null);
+      geoAsked = true;
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve(clientLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null), // denied, blocked, or timed out — caller falls back to HQ
+        { timeout: 8000, maximumAge: 20 * 60 * 1000 }
+      );
+    });
+  }
 
   function paintSite(kind) {
     const el = $('fiSiteFx');
     if (!el) return;
-    siteKind = kind;
+    siteFlashTok.n++; // cancel any pending flash loop from the previous kind
     el.className = kind ? `fi-on fi-${kind}` : '';
-    el.innerHTML = '';
-    const n = kind === 'rain' ? 26 : kind === 'snow' ? 20 : 0; // capped, GPU-only transforms
-    if (!n) return;
-    let bits = '';
-    for (let j = 0; j < n; j++) {
-      const dur = kind === 'rain' ? 1 + (j % 5) * 0.18 : 6 + (j % 6);
-      bits += `<i style="left:${(j * 71) % 100}%;animation-delay:-${((j * 0.53) % 4).toFixed(2)}s;animation-duration:${dur}s"></i>`;
-    }
-    el.innerHTML = bits;
+    el.innerHTML = kind ? buildBits(kind, true) : '';
+    if (kind === 'thunder' && !reduce) flashLoop(el, siteFlashTok);
   }
 
   async function refreshSite() {
     if (store.get('fi_fx') === 'off') return paintSite(null);
     const forced = new URLSearchParams(location.search).get('fx');
-    const [off, kind] = await Promise.all([fxOff(), forced ? Promise.resolve(forced) : weatherKind(HQ_LAT, HQ_LNG)]);
+    if (forced) { paintSite((await fxOff()) ? null : forced); return; }
+    const loc = await getClientLocation(); // null if declined/unsupported/timed out
+    const { lat, lng } = loc || { lat: HQ_LAT, lng: HQ_LNG };
+    const [off, kind] = await Promise.all([fxOff(), weatherKind(lat, lng)]);
     paintSite(off ? null : kind);
   }
 
   function scheduleSite() {
     clearInterval(siteTimer);
-    // Refetch every 15 min; skip entirely while the tab is hidden or reduce-motion is on.
+    // Refetch every 15 min (re-using the visitor's already-known location, not
+    // re-prompting); skip entirely while the tab is hidden or reduce-motion is on.
     siteTimer = setInterval(() => { if (!document.hidden) refreshSite(); }, 15 * 60 * 1000);
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSite(); });
