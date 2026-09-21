@@ -819,15 +819,42 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* ---- Site-wide weather effects (feelit-extras.js fills #fiSiteFx) ----
    Fixed, full-viewport, click-through layer. Kept to a small, capped
-   element count and pure CSS transforms so it never touches layout or
-   costs a reflow — see the lag notes in feelit-extras.js. */
+   element count and pure transform/opacity animations so it never touches
+   layout or costs a reflow — see the lag notes in feelit-extras.js.
+   Fog is deliberately the faintest of the four so the page stays readable. */
 #fiSiteFx{position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
 #fiSiteFx.fi-on{opacity:.45;}
-#fiSiteFx i{position:absolute;top:-24px;display:block;will-change:transform;animation:fiSiteFall linear infinite;}
-#fiSiteFx.fi-rain i{width:1.5px;height:22px;background:rgba(148,197,255,.65);}
-#fiSiteFx.fi-snow i{width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.6);}
-#fiSiteFx.fi-fog{background:linear-gradient(180deg,rgba(203,213,225,.20),rgba(203,213,225,.02));animation:fiSiteDrift 16s ease-in-out infinite alternate;}
+#fiSiteFx.fi-on.fi-fog{opacity:.3;}
+#fiSiteFx.fi-on.fi-thunder{opacity:.6;}
+
+#fiSiteFx .fi-drop{position:absolute;top:-24px;width:1.5px;border-radius:2px;
+  background:linear-gradient(rgba(190,215,255,0),rgba(190,215,255,.8));
+  transform:rotate(9deg);animation-name:fiSiteRainFall;animation-timing-function:linear;animation-iteration-count:infinite;will-change:transform;}
+#fiSiteFx.fi-thunder .fi-drop{background:linear-gradient(rgba(214,196,255,0),rgba(214,196,255,.85));}
+@keyframes fiSiteRainFall{to{transform:translate3d(-20px,130vh,0) rotate(9deg);}}
+
+#fiSiteFx .fi-flake{position:absolute;top:-12px;border-radius:50%;
+  background:radial-gradient(circle,#fff,rgba(255,255,255,.55) 70%);
+  animation-name:fiSiteSnowFall,fiSiteSnowSway;animation-timing-function:linear,ease-in-out;
+  animation-iteration-count:infinite,infinite;animation-direction:normal,alternate;will-change:transform;}
+@keyframes fiSiteSnowFall{to{transform:translateY(130vh);}}
+@keyframes fiSiteSnowSway{from{margin-left:-12px;}to{margin-left:12px;}}
+
+#fiSiteFx.fi-fog{background:linear-gradient(180deg,rgba(203,213,225,.14),rgba(203,213,225,.03));}
+#fiSiteFx .fi-cloud{position:absolute;left:-35%;height:22vh;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(226,232,240,.85),rgba(226,232,240,0) 70%);
+  filter:blur(24px);animation:fiSiteCloudDrift linear infinite;will-change:transform;}
+@keyframes fiSiteCloudDrift{to{transform:translateX(165%);}}
+
 #fiSiteFx.fi-clear{background:radial-gradient(circle at 92% 4%,rgba(250,204,21,.20),transparent 40%);}
-@keyframes fiSiteFall{to{transform:translate3d(-30px,110vh,0);}}
-@keyframes fiSiteDrift{to{transform:translateX(3%);}}
-@media (prefers-reduced-motion:reduce){#fiSiteFx{transition:none;} #fiSiteFx,#fiSiteFx i{animation:none!important;}}
+
+#fiSiteFx.fi-thunder{background:linear-gradient(180deg,rgba(76,29,149,.35),rgba(12,4,26,.5));}
+#fiSiteFx .fi-bolt{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;
+  background:radial-gradient(ellipse at 30% -10%,rgba(232,224,255,.95),transparent 55%);}
+#fiSiteFx .fi-bolt.fi-bolt-on{animation:fiSiteBoltPulse .22s ease-out;}
+#fiSiteFx .fi-flash{position:absolute;inset:0;background:#f5f0ff;opacity:0;mix-blend-mode:overlay;}
+#fiSiteFx .fi-flash.fi-flash-on{animation:fiSiteFlashPulse .22s ease-out;}
+@keyframes fiSiteBoltPulse{0%{opacity:0;}20%{opacity:1;}100%{opacity:0;}}
+@keyframes fiSiteFlashPulse{0%{opacity:0;}15%{opacity:.8;}100%{opacity:0;}}
+
+@media (prefers-reduced-motion:reduce){#fiSiteFx{transition:none;} #fiSiteFx *,#fiSiteFx{animation:none!important;}}
