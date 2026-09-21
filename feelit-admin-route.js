@@ -77,11 +77,12 @@
   async function fxCard(host) {
     host.insertAdjacentHTML('afterbegin', `<div class="form-card" style="max-width:100%;margin-bottom:12px;">
       <h3>🌦️ Weather effects</h3>
-      <p class="form-note">Site-wide: <strong id="fiFxState">checking…</strong> (applies to visitors on their next page load)</p>
+      <p class="form-note">Site-wide: <strong id="fiFxState">checking…</strong> — shows each visitor's own weather (after they allow location), or Kathmandu if they decline</p>
+      <p class="form-note">Applies on visitors' next page load.</p>
       <div class="admin-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn-outline btn-sm" onclick="fiSetFx('on')">Turn on</button>
         <button class="btn btn-outline btn-sm" onclick="fiSetFx('off')">Turn off</button>
-        ${['snow', 'rain', 'fog', 'clear'].map(k => `<button class="btn btn-outline btn-sm" onclick="window.feelitFx&&feelitFx.preview('${k}')">Preview ${k}</button>`).join('')}
+        ${['snow', 'rain', 'fog', 'thunder', 'clear'].map(k => `<button class="btn btn-outline btn-sm" onclick="window.feelitFx&&feelitFx.preview('${k}')">Preview ${k}</button>`).join('')}
         <button class="btn btn-outline btn-sm" onclick="window.feelitFx&&feelitFx.preview(null)">Stop preview</button>
       </div></div>`);
     const { data } = await supabaseClient.from('site_settings').select('value').eq('key', 'weather_fx').maybeSingle();
