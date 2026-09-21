@@ -816,3 +816,18 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .route-builder-grid{grid-template-columns:1fr;}
   #routeBuilderMap{height:360px;}
 }
+
+/* ---- Site-wide weather effects (feelit-extras.js fills #fiSiteFx) ----
+   Fixed, full-viewport, click-through layer. Kept to a small, capped
+   element count and pure CSS transforms so it never touches layout or
+   costs a reflow — see the lag notes in feelit-extras.js. */
+#fiSiteFx{position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
+#fiSiteFx.fi-on{opacity:.45;}
+#fiSiteFx i{position:absolute;top:-24px;display:block;will-change:transform;animation:fiSiteFall linear infinite;}
+#fiSiteFx.fi-rain i{width:1.5px;height:22px;background:rgba(148,197,255,.65);}
+#fiSiteFx.fi-snow i{width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.6);}
+#fiSiteFx.fi-fog{background:linear-gradient(180deg,rgba(203,213,225,.20),rgba(203,213,225,.02));animation:fiSiteDrift 16s ease-in-out infinite alternate;}
+#fiSiteFx.fi-clear{background:radial-gradient(circle at 92% 4%,rgba(250,204,21,.20),transparent 40%);}
+@keyframes fiSiteFall{to{transform:translate3d(-30px,110vh,0);}}
+@keyframes fiSiteDrift{to{transform:translateX(3%);}}
+@media (prefers-reduced-motion:reduce){#fiSiteFx{transition:none;} #fiSiteFx,#fiSiteFx i{animation:none!important;}}
