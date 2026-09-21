@@ -1,8 +1,4 @@
-/* feelit-extras.js — load AFTER feelit-upgrade.js (index.html only):
-   <script src="feelit-extras.js"></script>
-   Adds: family + high-altitude safety section, sample GPS tracker, weather effects in the tour modal.
-   Lag-safe: the tracker ticks every 2.6s and pauses off-screen / in background tabs;
-   weather effects are ≤22 GPU-only CSS elements and respect "reduce motion". */
+
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -132,12 +128,6 @@
     m.insertAdjacentHTML('afterbegin', `<div class="fi-fx fi-${kind}" aria-hidden="true">${bits}</div>`);
   }
 
-  window.feelitFx = {
-    on: () => store.set('fi_fx', 'on'),
-    off: () => { store.set('fi_fx', 'off'); paint(null); },
-    preview: kind => paint(kind)
-  };
-
   // Site-wide switch set in Admin › Tours (site_settings table); missing table/row = effects on.
   let fxOffP;
   const fxOff = () => fxOffP || (fxOffP = (async () => {
@@ -158,5 +148,49 @@
     Promise.all([fxOff(), forced ? Promise.resolve(forced) : weatherKind(+t.lat, +t.lng)]).then(([off, kind]) => {
       if (!off && kind && $('modalContent').firstElementChild === marker) paint(kind);
     });
+  };
+
+  /* ---- Site-wide weather layer (the fixed #fiSiteFx div in index.html) ----
+     Shows the CURRENT weather at Feel It's Basundhara, Kathmandu base on every
+     page — home, gallery, admin — behind the content, click-through.
+     Same on/off switch and ?fx= override as the tour-modal effect above. */
+  const HQ_LAT = 27.7410, HQ_LNG = 85.3360; // Basundhara, Kathmandu (CONTACT_INFO.address)
+  let siteKind = null, siteTimer = null;
+
+  function paintSite(kind) {
+    const el = $('fiSiteFx');
+    if (!el) return;
+    siteKind = kind;
+    el.className = kind ? `fi-on fi-${kind}` : '';
+    el.innerHTML = '';
+    const n = kind === 'rain' ? 26 : kind === 'snow' ? 20 : 0; // capped, GPU-only transforms
+    if (!n) return;
+    let bits = '';
+    for (let j = 0; j < n; j++) {
+      const dur = kind === 'rain' ? 1 + (j % 5) * 0.18 : 6 + (j % 6);
+      bits += `<i style="left:${(j * 71) % 100}%;animation-delay:-${((j * 0.53) % 4).toFixed(2)}s;animation-duration:${dur}s"></i>`;
+    }
+    el.innerHTML = bits;
+  }
+
+  async function refreshSite() {
+    if (store.get('fi_fx') === 'off') return paintSite(null);
+    const forced = new URLSearchParams(location.search).get('fx');
+    const [off, kind] = await Promise.all([fxOff(), forced ? Promise.resolve(forced) : weatherKind(HQ_LAT, HQ_LNG)]);
+    paintSite(off ? null : kind);
+  }
+
+  function scheduleSite() {
+    clearInterval(siteTimer);
+    // Refetch every 15 min; skip entirely while the tab is hidden or reduce-motion is on.
+    siteTimer = setInterval(() => { if (!document.hidden) refreshSite(); }, 15 * 60 * 1000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSite(); });
+  if (!reduce) { refreshSite(); scheduleSite(); }
+
+  window.feelitFx = {
+    on: () => { store.set('fi_fx', 'on'); refreshSite(); },
+    off: () => { store.set('fi_fx', 'off'); paint(null); paintSite(null); },
+    preview: kind => { paint(kind); paintSite(kind); }
   };
 })();
