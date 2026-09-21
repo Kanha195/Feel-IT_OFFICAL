@@ -1,7 +1,4 @@
-/* feelit-upgrade.js — load AFTER script.js (index.html only):
-   <script src="feelit-upgrade.js"></script>
-   Additive: wraps a few functions from script.js, changes nothing else.
-   No timers, no animation loops, no polling — it only runs on clicks. */
+
 (() => {
   'use strict';
 
@@ -72,7 +69,24 @@
     .fi-h{margin:14px 0 6px;font-size:14px}
     .fi-no{padding-left:20px;margin:0 0 14px;font-size:14px;list-style:'✕  '}
     .fi-warn{color:#f59e0b;font-weight:600;font-size:13px;min-height:0}
+    .fi-card-local{font-size:12px;color:var(--ink-soft);margin:-8px 0 10px}
   </style>`);
+
+  /* ---- Tour cards (main grid): show the Nepali-resident price under the visitor price,
+     so people can see it while browsing, before opening a tour. ---- */
+  const _renderTours = window.renderTours;
+  window.renderTours = function () {
+    _renderTours();
+    const list = activeFilter === 'All' ? tours : tours.filter(x => x.region === activeFilter);
+    document.querySelectorAll('#tourGrid .card').forEach((card, i) => {
+      const t = list[i], priceEl = card.querySelector('.card-price');
+      if (!t || !priceEl) return;
+      const base = Number(t.price) || 0;
+      const local = Number(t.price_local) || Math.round(base * RULES.localFactor / RULES.roundTo) * RULES.roundTo;
+      priceEl.insertAdjacentHTML('afterend',
+        `<div class="fi-card-local">🇳🇵 Nepali resident: ${fmtNPR(local)} <small>/ person</small></div>`);
+    });
+  };
 
   /* ---- Tour modal: included/excluded, tourist/local, 100% / 30%, return date, slots ---- */
   const _open = window.openTour;
