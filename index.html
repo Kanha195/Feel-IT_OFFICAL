@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
+  <!-- The old tag declared type="image/svg+xml" while pointing at a .png,
+       which some browsers reject outright. Both formats are listed now, so
+       whichever file is actually in your repo gets used. -->
   <link rel="icon" type="image/svg+xml" href="assets/logo-icon.png">
   <link rel="alternate icon" type="image/png" href="assets/logo-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -310,6 +312,9 @@
   <div class="modal" id="modalContent"></div>
 </div>
 
+<!-- Site-wide weather effect layer (see style.css "Site-wide weather effects") -->
+<div id="fiSiteFx" aria-hidden="true"></div>
+
 <div id="toast-container"></div>
 
 <!-- Leaflet Map JS -->
@@ -317,9 +322,10 @@
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <!-- Main Logic JavaScript -->
-     <script src="feelit-upgrade.js"></script>
-   <script src="feelit-extras.js"></script>
-   <script src="feelit-admin-route.js"></script>
 <script src="script.js"></script>
+<!-- Feel It Nepal upgrades: pricing/booking, weather + family section, admin + route -->
+<script src="feelit-upgrade.js"></script>
+<script src="feelit-extras.js"></script>
+<script src="feelit-admin-route.js"></script>
 </body>
 </html>
