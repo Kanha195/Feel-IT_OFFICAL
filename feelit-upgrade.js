@@ -1,4 +1,7 @@
-
+/* feelit-upgrade.js — load AFTER script.js (index.html only):
+   <script src="feelit-upgrade.js"></script>
+   Additive: wraps a few functions from script.js, changes nothing else.
+   No timers, no animation loops, no polling — it only runs on clicks. */
 (() => {
   'use strict';
 
