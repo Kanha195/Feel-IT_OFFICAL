@@ -347,7 +347,7 @@ footer p{font-size:13px;max-width:340px;color:var(--ink-soft);}
   .chat-compose .btn{width:100%;}
 }
 
-/* ---------------- Admin panel polish ---------------- */
+/* ---------------- Admin panel v2 polish ---------------- */
 .modal-admin{max-width:960px;}
 .admin-header{margin-bottom:18px;}
 .admin-header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
