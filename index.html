@@ -204,6 +204,14 @@
               <option value="offroad">Extreme Off-Road</option>
             </select>
           </div>
+          <div class="field">
+            <label>What should we include?</label>
+            <div class="route-toggle-row">
+              <label class="route-toggle"><input type="checkbox" id="routeIncludeHotel" onchange="onRouteHotelToggle()">Hotel / lodging</label>
+              <label class="route-toggle"><input type="checkbox" id="routeIncludeFood" checked onchange="recalcRouteEstimate()">Food</label>
+            </div>
+            <p class="route-summary-note" style="margin:4px 0 0;">Day rides default to no hotel — tick it if you want us to arrange lodging.</p>
+          </div>
         </div>
 
         <div class="route-panel-card route-summary-card">
