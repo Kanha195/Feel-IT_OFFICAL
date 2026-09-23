@@ -1,10 +1,4 @@
-/* feelit-extras.js — load AFTER feelit-upgrade.js (index.html only):
-   <script src="feelit-extras.js"></script>
-   Adds: family + high-altitude safety section, sample GPS tracker, weather effects
-   (rain / snow / fog / thunderstorm / clear) in the tour modal AND site-wide.
-   Lag-safe: the tracker ticks every 2.6s and pauses off-screen / in background tabs;
-   weather effects are a small, fixed number of GPU-only CSS elements (transform/opacity
-   only, no layout thrash), pause off-screen/hidden-tab, and respect "reduce motion". */
+
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -39,6 +33,16 @@
     .fi-fx.fi-thunder .fi-drop{background:linear-gradient(rgba(214,196,255,0),rgba(214,196,255,.85))}
     @keyframes fiRainFall{to{transform:translate3d(-20px,130%,0) rotate(9deg)}}
 
+    /* Rain (and thunder) darken the scene, like an actual storm rolling in */
+    .fi-fx.fi-rain{background:linear-gradient(180deg,rgba(15,23,42,.3),rgba(15,23,42,.5))}
+
+    /* A warm "lamp" glow that stays lit through the storm — pure gradient + a
+       slow opacity pulse, one element, no per-frame JS. */
+    .fi-fx .fi-lamp{position:absolute;top:-15%;left:50%;width:75%;height:65%;transform:translateX(-50%);
+      background:radial-gradient(ellipse at 50% 0%,rgba(255,224,130,.4),rgba(255,200,90,.1) 40%,transparent 72%);
+      mix-blend-mode:screen;animation:fiLampPulse 5s ease-in-out infinite alternate;pointer-events:none}
+    @keyframes fiLampPulse{from{opacity:.65}to{opacity:1}}
+
     .fi-fx .fi-flake{position:absolute;top:-12px;border-radius:50%;
       background:radial-gradient(circle,#fff,rgba(255,255,255,.55) 70%);
       animation-name:fiSnowFall,fiSnowSway;animation-timing-function:linear,ease-in-out;
@@ -57,11 +61,20 @@
     .fi-fx.fi-thunder{background:linear-gradient(180deg,rgba(76,29,149,.4),rgba(12,4,26,.6))}
     .fi-fx .fi-bolt{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;
       background:radial-gradient(ellipse at 30% -10%,rgba(232,224,255,.95),transparent 55%)}
-    .fi-fx .fi-bolt.fi-bolt-on{animation:fiBoltPulse .22s ease-out}
+    .fi-fx .fi-bolt.fi-bolt-on{animation:fiBoltPulse .5s ease-out}
     .fi-fx .fi-flash{position:absolute;inset:0;background:#f5f0ff;opacity:0;mix-blend-mode:overlay}
-    .fi-fx .fi-flash.fi-flash-on{animation:fiFlashPulse .22s ease-out}
-    @keyframes fiBoltPulse{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
-    @keyframes fiFlashPulse{0%{opacity:0}15%{opacity:.8}100%{opacity:0}}
+    .fi-fx .fi-flash.fi-flash-on{animation:fiFlashPulse .5s ease-out}
+    @keyframes fiBoltPulse{0%{opacity:0}10%{opacity:1}22%{opacity:.1}30%{opacity:.9}100%{opacity:0}}
+    @keyframes fiFlashPulse{0%{opacity:0}10%{opacity:.55}22%{opacity:.05}30%{opacity:.4}100%{opacity:0}}
+
+    /* The actual visible lightning bolt — a jagged shape, randomly repositioned
+       each strike, that flickers on/off like a real strike rather than the
+       screen just going white. */
+    .fi-fx .fi-bolt-shape{position:absolute;top:-4%;width:120px;height:78%;opacity:0;pointer-events:none;
+      filter:drop-shadow(0 0 10px rgba(232,224,255,.9)) drop-shadow(0 0 26px rgba(180,150,255,.6))}
+    .fi-fx .fi-bolt-shape svg{width:100%;height:100%;display:block}
+    .fi-fx .fi-bolt-shape.fi-bolt-on{animation:fiBoltFlicker .5s steps(1,end)}
+    @keyframes fiBoltFlicker{0%{opacity:0}8%{opacity:1}16%{opacity:.15}24%{opacity:1}34%{opacity:0}50%{opacity:.85}60%{opacity:0}100%{opacity:0}}
 
     @media (prefers-reduced-motion:reduce){.fi-fx *,.fi-fx,.fi-live{animation:none!important}}
   </style>`);
@@ -159,7 +172,12 @@
         const len = 14 + (j % 5) * 6;                      // varied streak length
         out += `<i class="fi-drop" style="left:${(j * 61) % 100}%;height:${len}px;animation-delay:-${((j * 0.41) % 3).toFixed(2)}s;animation-duration:${dur}s"></i>`;
       }
-      if (kind === 'thunder') out += `<div class="fi-bolt"></div><div class="fi-flash"></div>`;
+      out += `<div class="fi-lamp"></div>`; // a light stays on through the storm
+      if (kind === 'thunder') {
+        out += `<div class="fi-bolt-shape"><svg viewBox="0 0 60 200" preserveAspectRatio="none">` +
+          `<polygon points="30,0 8,96 24,96 4,200 56,84 34,84 52,0" fill="#f5f0ff"/></svg></div>` +
+          `<div class="fi-bolt"></div><div class="fi-flash"></div>`;
+      }
       return out;
     }
     if (kind === 'snow') {
@@ -192,16 +210,32 @@
     return ''; // clear — the glow is pure CSS background, no elements needed
   }
 
-  // Thunderstorms get occasional random lightning flashes. One self-cancelling
-  // timer per container (modal vs. site-wide), so switching weather never leaks timers.
+  // Picks one real tour card (or popular-strip card) at random and gives it a
+  // brief warm, fire-like glow — timed to the lightning, not fabricated data,
+  // just a visual flourish. One class toggle + one timeout; nothing per-frame.
+  function strikeRandomTour() {
+    const cards = document.querySelectorAll('#tourGrid .card, .popular-card');
+    if (!cards.length) return;
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    card.classList.add('fi-struck');
+    setTimeout(() => card.classList.remove('fi-struck'), 1800);
+  }
+
+  // Thunderstorms get occasional random lightning flashes — a real jagged bolt
+  // shape (repositioned each time) plus a brief screen flash, not just a plain
+  // white-out. One self-cancelling timer per container (modal vs. site-wide),
+  // so switching weather never leaks timers.
   function flashLoop(container, tok) {
     const my = ++tok.n;
     const fire = () => {
       if (my !== tok.n) return; // superseded by a repaint — stop quietly
-      const bolt = container.querySelector('.fi-bolt'), flash = container.querySelector('.fi-flash');
+      const bolt = container.querySelector('.fi-bolt'), flash = container.querySelector('.fi-flash'),
+        shape = container.querySelector('.fi-bolt-shape');
       if (bolt && flash && !reduce) {
-        bolt.classList.add('fi-bolt-on'); flash.classList.add('fi-flash-on');
-        setTimeout(() => { bolt.classList.remove('fi-bolt-on'); flash.classList.remove('fi-flash-on'); }, 240);
+        if (shape) shape.style.left = (8 + Math.random() * 78) + '%';
+        bolt.classList.add('fi-bolt-on'); flash.classList.add('fi-flash-on'); shape?.classList.add('fi-bolt-on');
+        setTimeout(() => { bolt.classList.remove('fi-bolt-on'); flash.classList.remove('fi-flash-on'); shape?.classList.remove('fi-bolt-on'); }, 520);
+        strikeRandomTour();
       }
       setTimeout(fire, 4500 + Math.random() * 7000);
     };
@@ -285,7 +319,11 @@
     if (store.get('fi_fx') === 'off') return paintSite(null);
     const forced = new URLSearchParams(location.search).get('fx');
     if (forced) { paintSite((await fxOff()) ? null : forced); return; }
-    const loc = await getClientLocation(); // null if declined/unsupported/timed out
+    // Race the geolocation lookup against a hard timeout — on some phones the
+    // browser's success/error callback can be slow or (rarely) never fire, and
+    // this app must never sit there showing nothing while it waits.
+    const timeout = new Promise(res => setTimeout(() => res(null), 6500));
+    const loc = await Promise.race([getClientLocation(), timeout]);
     const { lat, lng } = loc || { lat: HQ_LAT, lng: HQ_LNG };
     const [off, kind] = await Promise.all([fxOff(), weatherKind(lat, lng)]);
     paintSite(off ? null : kind);
@@ -294,15 +332,23 @@
   function scheduleSite() {
     clearInterval(siteTimer);
     // Refetch every 15 min (re-using the visitor's already-known location, not
-    // re-prompting); skip entirely while the tab is hidden or reduce-motion is on.
+    // re-prompting); skip entirely while the tab is hidden.
     siteTimer = setInterval(() => { if (!document.hidden) refreshSite(); }, 15 * 60 * 1000);
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSite(); });
-  if (!reduce) { refreshSite(); scheduleSite(); }
+  // Always run this — do NOT gate it behind `reduce`. A lot of phones default
+  // to "reduce motion" (iOS accessibility setting, Android battery saver), and
+  // gating the whole feature on that meant PHONES GOT NOTHING AT ALL: no tint,
+  // no icon, nothing — which matches "shows on laptop, not on phone" exactly.
+  // The CSS media query above already turns off the *motion* for those users;
+  // this just makes sure the still weather look always shows for everyone.
+  refreshSite();
+  scheduleSite();
 
   window.feelitFx = {
     on: () => { store.set('fi_fx', 'on'); refreshSite(); },
     off: () => { store.set('fi_fx', 'off'); paint(null); paintSite(null); },
     preview: kind => { paint(kind); paintSite(kind); }
   };
+  window.fiGetLocation = getClientLocation; // reused by feelit-hero.js so it never re-prompts
 })();
