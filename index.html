@@ -66,6 +66,7 @@
       <a href="gallery.html">Gallery</a>
       <a href="#how">How it works</a>
       <a href="#safety">Safety</a>
+      <a href="#riderReviews">Reviews</a>
       <a href="#pay">Payment</a>
       <a href="#contact">Contact</a>
       <a href="#guides">For guides</a>
@@ -81,6 +82,7 @@
     <a href="gallery.html">Gallery</a>
     <a href="#how" onclick="closeMobileMenu()">How it works</a>
     <a href="#safety" onclick="closeMobileMenu()">Safety</a>
+    <a href="#riderReviews" onclick="closeMobileMenu()">Reviews</a>
     <a href="#pay" onclick="closeMobileMenu()">Payment</a>
     <a href="#contact" onclick="closeMobileMenu()">Contact</a>
     <a href="#guides" onclick="closeMobileMenu()">For guides</a>
@@ -89,11 +91,12 @@
 </header>
 
 <section class="hero" id="top">
-  <svg viewBox="0 0 1080 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-    <polygon points="0,320 180,180 340,300 520,140 680,300 860,200 1080,320 1080,500 0,500" fill="#0f172a" opacity="0.8"/>
-    <polygon points="0,380 220,260 420,360 640,240 860,360 1080,270 1080,500 0,500" fill="#1e293b" opacity="0.8"/>
-    <path d="M -50 480 C 200 380, 350 500, 550 400 S 900 340, 1150 440" stroke="#22d3ee" stroke-width="4" fill="none" stroke-dasharray="4 16" stroke-linecap="round" opacity="0.8"/>
-  </svg>
+  <div class="hero-media">
+    <!-- Replace with your own photo: a rider, a bike, a Nepal mountain road.
+         If the file is missing, the dark gradient background still shows fine. -->
+    <img src="assets/hero-photo.jpg" alt="A rider on a mountain road in Nepal" onerror="this.remove()">
+  </div>
+  <div class="hero-overlay"></div>
   <div class="hero-inner">
     <div class="hero-tag">Guided motorbike tours · Nepal</div>
     <h1>Feel the road.<br>Not just the window.</h1>
@@ -102,6 +105,38 @@
       <a href="#tours" class="btn btn-primary">Browse tours</a>
       <a href="#guides" class="btn btn-outline">I'm a local guide</a>
     </div>
+    <div class="hero-trust" id="fiHeroTrust"></div>
+  </div>
+
+  <!-- Live weather where you are (or Kathmandu, if you don't share location) -->
+  <div class="hero-weather" id="fiWeatherWidget">
+    <span class="hero-weather-icon">🌦️</span>
+    <span class="hero-weather-text">Checking the weather…</span>
+  </div>
+
+  <!-- Quick route finder -->
+  <div class="hero-plan" id="fiHeroPlan">
+    <h3>Plan your ride</h3>
+    <p class="hero-plan-sub">Find your next route</p>
+    <div class="field">
+      <label for="fiPlanRegion">Region</label>
+      <select id="fiPlanRegion"><option value="All">Anywhere in Nepal</option></select>
+    </div>
+    <div class="row-2">
+      <div class="field"><label for="fiPlanDate">Date</label><input type="date" id="fiPlanDate"></div>
+      <div class="field"><label for="fiPlanRiders">Riders</label><input type="number" id="fiPlanRiders" min="1" max="6" value="1"></div>
+    </div>
+    <button class="btn btn-primary" id="fiPlanGo" style="width:100%;">Find my ride →</button>
+  </div>
+</section>
+
+<section id="popular">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Popular routes</h2>
+      <p>A few of the rides people book first.</p>
+    </div>
+    <div class="popular-strip" id="fiPopularStrip"><div class="empty-state">Loading…</div></div>
   </div>
 </section>
 
@@ -251,6 +286,16 @@
   </div>
 </section>
 
+<section id="riderReviews" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Rider stories</h2>
+      <p>Real reviews, pulled straight from each tour — nothing written by us.</p>
+    </div>
+    <div class="reviews-grid" id="fiReviewsGrid"><div class="empty-state">Loading…</div></div>
+  </div>
+</section>
+
 <section id="contact">
   <div class="wrap">
     <div class="section-head">
@@ -323,9 +368,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <!-- Main Logic JavaScript -->
 <script src="script.js"></script>
-<!-- Feel It Nepal upgrades: pricing/booking, weather + family section, admin  and more+ route -->
+<!-- Feel It Nepal upgrades: pricing/booking, weather + family section, admin + route -->
 <script src="feelit-upgrade.js"></script>
 <script src="feelit-extras.js"></script>
 <script src="feelit-admin-route.js"></script>
+<script src="feelit-hero.js"></script>
 </body>
 </html>
