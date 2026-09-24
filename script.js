@@ -1279,7 +1279,7 @@ window.addEventListener('DOMContentLoaded', () => {
       writes (and ideally reads of `bookings`) require that authenticated
       admin user — not just "the browser said so".
    3. Gate `renderAdminPanel` behind `supabaseClient.auth.getSession()`
-      checking that the signed-in user's ID matches your admin user,
+      checking  that the signed-in user's ID matches your admin user,
       instead of the local hash compare.
    Happy to wire this up properly if/when you're ready — it's a bigger
    change since it touches your Supabase project settings, not just this
