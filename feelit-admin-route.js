@@ -71,7 +71,7 @@
   window.fiSetFx = async v => {
     const ok = await sbWrite(supabaseClient.from('site_settings').upsert({ key: 'weather_fx', value: v }),
       'Could not save the setting — run supabase-upgrade.sql first');
-    if (ok && $('fiFxState')) { $('fiFxState').textContent = v.toUpperCase(); showToast(`Weather effects ${v} for all visitors.`, 'success'); }
+    if (ok && $('fiFxState')) {$('fiFxState').textContent = v.toUpperCase(); showToast(`Weather effects ${v} for all visitors.`, 'success'); }
   };
 
   async function fxCard(host) {
@@ -86,7 +86,7 @@
         <button class="btn btn-outline btn-sm" onclick="window.feelitFx&&feelitFx.preview(null)">Stop preview</button>
       </div></div>`);
     const { data } = await supabaseClient.from('site_settings').select('value').eq('key', 'weather_fx').maybeSingle();
-    if ($('fiFxState')) $('fiFxState').textContent = data && data.value === 'off' ? 'OFF' : 'ON';
+    if ($('fiFxState'))$('fiFxState').textContent = data && data.value === 'off' ? 'OFF' : 'ON';
   }
 
   async function profitSummary(host) {
@@ -121,7 +121,6 @@
   };
 
   /* ================= 2) ROUTE: permits, places, return date ================= */
-  // Fees/rules are INDICATIVE and change — edit this list to match current rules.
   const ZONES = [
     { name: 'Upper Mustang (restricted area)', box: [28.83, 29.5, 83.5, 84.4], high: true, check: 'Kagbeni',
       alt: 'up to ~3,800 m at Lo Manthang',
@@ -149,7 +148,6 @@
   const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
   const fd = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-  // Cache route lookups (also spares the public OSRM server) and remember the latest result.
   let last = null;
   const rcache = new Map(), _road = window.getRoadDistanceKm;
   window.getRoadDistanceKm = async (points, terrain) => {
@@ -167,12 +165,11 @@
     days.closest('.field').insertAdjacentHTML('afterend',
       '<div class="field"><label for="routeStart">Start date</label><input type="date" id="routeStart" oninput="recalcRouteEstimate()"></div>');
     $('routeStart').min = new Date().toISOString().slice(0, 10);
-    days.addEventListener('input', () => { daysTouched = true; }); // manual edit wins over the automatic suggestion
+    days.addEventListener('input', () => { daysTouched = true; });
   }
 
   function suggestDays() {
     const high = routeStops.some(s => zoneOf(s)?.high);
-    // ~6 riding hours a day, there and back, plus one acclimatisation day above ~3,000 m
     return Math.max(1, Math.ceil((last.durationMin * 2 / 60) / 6) + (high ? 1 : 0));
   }
 
@@ -182,7 +179,7 @@
   function renderRouteInfo() {
     const host = $('routeSummaryBody');
     if (!host) return;
-    const days = Math.max(1, parseInt($('routeDays').value, 10) || 1), start = $('routeStart').value, zones = [];
+    const days = Math.max(1, parseInt($('routeDays').value, 10) \vert{}\vert{} 1), start =$('routeStart').value, zones = [];
     const rows = routeStops.map(s => {
       const z = zoneOf(s);
       if (z && !zones.includes(z)) zones.push(z);
@@ -207,7 +204,7 @@
     const need = suggestDays(), inp = $('routeDays');
     if (!daysTouched && inp && +inp.value !== need) {
       inp.value = need;
-      await _recalc(); // route lookup is cached, so this is instant
+      await _recalc();
       if (my !== tok) return;
     }
     renderRouteInfo();
