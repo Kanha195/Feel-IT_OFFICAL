@@ -1,21 +1,18 @@
 /* feelit-upgrade.js — load AFTER script.js (index.html only):
    <script src="feelit-upgrade.js"></script>
-   Additive: wraps a few functions from script.js, changes nothing else.
-   No timers, no animation loops, no polling — it only runs on clicks. */
+   Additive: wraps functions from script.js, adds business rules, pricing tiers, and robust checkout flows. */
 (() => {
   'use strict';
 
-  /* ---- Business rules: edit here ---- */
   const RULES = {
-    localFactor: 0.6,  // Nepali-resident price = visitor price × this (unless the tour has price_local)
-    depositPct: 0.3,   // 30% now, remainder due in person on Day 1
-    roundTo: 100       // NPR rounding for the derived local price
+    localFactor: 0.6,
+    depositPct: 0.3,
+    roundTo: 100
   };
-  window.FI_RULES = RULES; // read by the admin panel's profit view
+  window.FI_RULES = RULES;
 
-  /* ---- EmailJS (public identifiers, meant to live in client code) ---- */
   Object.assign(EMAILJS_CONFIG, { publicKey: 'wDN-iPgsFnYecariG', serviceId: 'service_h2b4s5n' });
-  const TEMPLATES = { booking: '', contact: '' }; // paste your EmailJS template IDs to switch emails on
+  const TEMPLATES = { booking: '', contact: '' };
   if (TEMPLATES.booking) {
     Object.assign(EMAILJS_CONFIG, {
       bookingTemplateId: TEMPLATES.booking,
@@ -25,7 +22,6 @@
     initEmailJS();
   }
 
-  /* ---- Helpers ---- */
   const $ = id => document.getElementById(id);
   const list = v => (Array.isArray(v) ? v : (s => s.includes('\n') ? s.split('\n') : s.split(','))(String(v || ''))).map(s => String(s).trim()).filter(Boolean);
 
@@ -35,7 +31,7 @@
     const m = s.match(/(\d+)/);
     return m ? Math.max(1, +m[1]) : 1;
   }
-  function addDays(iso, n) { // pure UTC math — no timezone drift
+  function addDays(iso, n) {
     const [y, m, d] = iso.split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
   }
@@ -52,8 +48,6 @@
     return { unit, total, payNow, due: total - payNow };
   }
 
-  // Real scarcity only: counts actual bookings against the tour's max_slots.
-  // Returns null (no message shown) if max_slots is unset or the query fails.
   async function slotsLeft(t, date) {
     const cap = Number(t.max_slots) || 0;
     if (!cap) return null;
@@ -75,8 +69,6 @@
     .fi-card-local{font-size:12px;color:var(--ink-soft);margin:-8px 0 10px}
   </style>`);
 
-  /* ---- Tour cards (main grid): show the Nepali-resident price under the visitor price,
-     so people can see it while browsing, before opening a tour. ---- */
   const _renderTours = window.renderTours;
   window.renderTours = function () {
     _renderTours();
@@ -91,7 +83,6 @@
     });
   };
 
-  /* ---- Tour modal: included/excluded, tourist/local, 100% / 30%, return date, slots ---- */
   const _open = window.openTour;
   let slotTimer, slotToken = 0;
 
@@ -121,32 +112,38 @@
       </div>`);
 
     const upd = () => refresh(t);
-    ['fiBox', 'tourDate', 'tourTravelers'].forEach(i => $(i).addEventListener('input', upd)); // elements are recreated per open, so no listener build-up
+    ['fiBox', 'tourDate', 'tourTravelers'].forEach(i => $(i)?.addEventListener('input', upd));
     upd();
   };
 
   function choice() {
-    const q = n => document.querySelector(`input[name=${n}]:checked`).value;
+    const q = n => document.querySelector(`input[name=${n}]:checked`)?.value || 'tourist';
     return { type: q('fiType'), opt: q('fiOpt') };
   }
 
   function refresh(t) {
     const { type, opt } = choice();
-    const n = Math.min(6, Math.max(1, parseInt($('tourTravelers').value, 10) || 1));
-    const date = $('tourDate').value, q = quote(t, type, n, opt), days = daysOf(t);
+    const n = Math.min(6, Math.max(1, parseInt($('tourTravelers')?.value || '1', 10)));
+    const date = $('tourDate')?.value, q = quote(t, type, n, opt), days = daysOf(t);
 
-    document.querySelector('#modalContent .card-price').innerHTML =
-      `${fmtNPR(q.unit)} <small>/ person · ${type === 'local' ? 'Nepali resident rate' : 'visitor rate'}</small>`;
+    const priceEl = document.querySelector('#modalContent .card-price');
+    if (priceEl) {
+      priceEl.innerHTML = `${fmtNPR(q.unit)} <small>/ person · ${type === 'local' ? 'Nepali resident rate' : 'visitor rate'}</small>`;
+    }
 
-    $('fiSum').innerHTML =
-      `Total <strong>${fmtNPR(q.total)}</strong> · Pay now <strong>${fmtNPR(q.payNow)}</strong>` +
-      (q.due ? `<br>${fmtNPR(q.due)} due in person on Day 1` : '') +
-      (date ? `<br>${days > 1 ? `Departs ${fmtDate(date)} → back ${fmtDate(addDays(date, days - 1))}` : `Ride date ${fmtDate(date)}`}` : '') +
-      (type === 'local' ? '<br><small>Resident rate: please carry your Nepali citizenship card or licence at check-in.</small>' : '');
+    const sumEl = $('fiSum');
+    if (sumEl) {
+      sumEl.innerHTML =
+        `Total <strong>${fmtNPR(q.total)}</strong> · Pay now <strong>${fmtNPR(q.payNow)}</strong>` +
+        (q.due ? `<br>${fmtNPR(q.due)} due in person on Day 1` : '') +
+        (date ? `<br>${days > 1 ? `Departs ${fmtDate(date)} → back ${fmtDate(addDays(date, days - 1))}` : `Ride date ${fmtDate(date)}`}` : '') +
+        (type === 'local' ? '<br><small>Resident rate: please carry your Nepali citizenship card or licence at check-in.</small>' : '');
+    }
 
     clearTimeout(slotTimer);
     const tok = ++slotToken;
-    $('fiSlots').textContent = '';
+    const slotsEl = $('fiSlots');
+    if (slotsEl) slotsEl.textContent = '';
     if (date && Number(t.max_slots) > 0) {
       slotTimer = setTimeout(async () => {
         const left = await slotsLeft(t, date);
@@ -157,12 +154,11 @@
     }
   }
 
-  /* ---- Checkout ---- */
   window.goToCheckout = async function (id) {
     const t = tours.find(x => x.id === id);
     if (!t) return;
-    const date = $('tourDate').value;
-    const n = parseInt($('tourTravelers').value || '1', 10);
+    const date = $('tourDate')?.value;
+    const n = parseInt($('tourTravelers')?.value || '1', 10);
     if (!date) return showToast('Please select a tour date.', 'error');
     if (!n || n < 1 || n > 6) return showToast('Travelers must be between 1 and 6.', 'error');
 
@@ -200,11 +196,11 @@
 
   window.submitFinalBooking = async function () {
     const b = pendingBooking;
-    const name = $('bkName').value.trim(), email = $('bkEmail').value.trim();
-    const phone = $('bkPhone').value.trim(), txnRef = $('bkTxnRef').value.trim();
+    const name = $('bkName')?.value.trim(), email =$('bkEmail')?.value.trim();
+    const phone = $('bkPhone')?.value.trim(), txnRef =$('bkTxnRef')?.value.trim();
     if (!name || !email || !phone || !txnRef) return showToast('Please complete all fields including your transaction reference ID.', 'error');
     if (!isValidEmail(email)) return showToast('Please enter a valid email address.', 'error');
-    if (!$('bkAgreeTerms').checked) return showToast('Please confirm you’ve paid and agree to the Terms & Conditions.', 'error');
+    if (!$('bkAgreeTerms')?.checked) return showToast('Please confirm you’ve paid and agree to the Terms & Conditions.', 'error');
     if (!b || !b.paymentMethod) return showToast('Something went wrong — please start the booking again.', 'error');
 
     const restore = setBusy($('submitBookingBtn'), 'Submitting…');
@@ -217,7 +213,6 @@
 
     let { error } = await supabaseClient.from('bookings').insert([{ ...legacy, ...extra }]);
     if (error && /column|schema/i.test(error.message || '')) {
-      // supabase-upgrade.sql not run yet: save in the old shape so no booking is ever lost
       const note = `${b.type} | ${b.option} | paid ${b.payNow} | due Day 1 ${b.due} | return ${b.returnDate}`;
       ({ error } = await supabaseClient.from('bookings').insert([{ ...legacy, txn_ref: `${txnRef} | ${note}` }]));
     }
