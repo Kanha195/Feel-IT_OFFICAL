@@ -1,4 +1,4 @@
-/* Feel It hero layer — no rebuild; fills existing weather/trust/popular widgets. */
+/* Feel It hero layer —  no rebuild; fills existing weather/trust/popular widgets. */
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
