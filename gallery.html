@@ -1,1 +1,59 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gallery — Feel It Nepal</title><meta name="description" content="Travel photographs from Feel It Nepal's guided motorbike journeys."><link rel="canonical" href="https://feelitnepal.com/gallery.html"><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><header><div class="wrap nav"><a href="index.html" class="brand"><img src="assets/logo-icon.svg" width="38" height="38" alt="Feel It Nepal logo"><span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span></a><a class="btn btn-outline" href="index.html">Back to rides</a></div></header><main><section><div class="wrap"><div class="section-head"><span class="fi-eyebrow">FROM THE ROAD</span><h1>Gallery</h1><p>Photos from the road, uploaded through the Feel It gallery system.</p></div><div id="galleryGrid" class="gallery-grid"><div class="empty-state">Loading photos…</div></div></div></section></main><footer><div class="wrap"><div class="footer-brand"><div class="footer-mark"><img src="assets/logo-icon.svg" width="36" height="36" alt="Feel It Nepal"><span class="display">FEEL IT</span></div><p>feel the road, not the window.</p></div><div class="footer-links"><a href="index.html#tours">Tours</a><a href="index.html#hiddenGems">Hidden Gems</a><a href="index.html#contact">Contact</a></div></div></footer><script>const SUPABASE_URL='https://gsjkexvchfozviqllpvq.supabase.co',SUPABASE_ANON_KEY='sb_publishable_G6Su-3CqSjBJaVdRuYwfMw_dDTE2S8s',sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);const grid=document.getElementById('galleryGrid');const drive=u=>{const m=String(u||'').match(/(?:id=|\/d\/|file\/d\/)([A-Za-z0-9_-]{10,})/);return m?'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1600':u};(async()=>{try{const {data,error}=await sb.from('gallery_photos').select('*').order('created_at',{ascending:false});if(error)throw error;if(!data?.length){grid.innerHTML='<div class="empty-state">No gallery photos have been published yet.</div>';return}grid.innerHTML=data.map(p=>'<article class="gallery-card"><a class="gallery-open" href="'+String(p.url||p.image_url||'').replace(/"/g,'&quot;')+'" target="_blank" rel="noopener"><img loading="lazy" src="'+drive(p.url||p.image_url||'')+'" alt="'+String(p.caption||'Feel It Nepal travel photo').replace(/"/g,'&quot;')+'" onerror="this.src=\'assets/hero-himalayan.jpg\'"></a><div class="gallery-caption">'+String(p.caption||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></article>').join('')}catch(e){grid.innerHTML='<div class="empty-state">Gallery is temporarily unavailable. Please try again later.</div>'}})();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gallery — Feel It Nepal</title><meta name="description" content="Travel photographs from Feel It Nepal's guided motorbike journeys."><link rel="canonical" href="https://feelitnepal.com/gallery.html"><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <header>
+        <div class="wrap nav">
+            <a href="index.html" class="brand"><img src="assets/logo-icon.svg" width="38" height="38" alt="Feel It Nepal logo"><span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span></a><a class="btn btn-outline" href="index.html">Back to rides</a>
+        </div>
+    </header>
+    <main><section>
+        <div class="wrap">
+            <div class="section-head">
+                <span class="fi-eyebrow">FROM THE ROAD</span><h1>Gallery</h1><p>
+                    Photos from the road, uploaded through the Feel It gallery system.
+                </p>
+            </div>
+            <div id="galleryGrid" class="gallery-grid">
+                <div class="empty-state">
+                    Loading photos…
+                </div>
+            </div>
+        </div>
+    </section>
+    </main><footer>
+        <div class="wrap">
+            <div class="footer-brand">
+                <div class="footer-mark">
+                    <img src="assets/logo-icon.svg" width="36" height="36" alt="Feel It Nepal"><span class="display">FEEL IT</span>
+                </div>
+                <p>
+                    feel the road, not the window.
+                </p>
+            </div>
+            <div class="footer-links">
+                <a href="index.html#tours">Tours</a><a href="index.html#hiddenGems">Hidden Gems</a><a href="index.html#contact">Contact</a>
+            </div>
+        </div>
+    </footer>
+    <script>
+        const SUPABASE_URL = 'https://gsjkexvchfozviqllpvq.supabase.co', SUPABASE_ANON_KEY = 'sb_publishable_G6Su-3CqSjBJaVdRuYwfMw_dDTE2S8s', sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); const grid = document.getElementById('galleryGrid'); const drive = u=> {
+            const m = String(u || '').match(/(?:id=|\/d\/|file\/d\/)([A-Za-z0-9_-]{10,})/); return m?'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1600': u
+        }; (async()=> {
+                try {
+                    const {
+                        data, error
+                    } = await sb.from('gallery_photos').select('*').order('created_at', {
+                            ascending: false
+                        }); if (error)throw error; if (!data?.length) {
+                        grid.innerHTML = '<div class="empty-state">No gallery photos have been published yet.</div>'; return
+                    }grid.innerHTML = data.map(p=>'<article class="gallery-card"><a class="gallery-open" href="'+String(p.url || p.image_url || '').replace(/"/g, '&quot;')+'" target="_blank" rel="noopener"><img loading="lazy" src="'+drive(p.url || p.image_url || '')+'" alt="'+String(p.caption || 'Feel It Nepal travel photo').replace(/"/g, '&quot;')+'" onerror="this.src=\'assets/hero-himalayan.jpg\'"></a><div class="gallery-caption">'+String(p.caption || '').replace(/[&<>]/g, m=>({
+                            '&': '&amp;', '<': '&lt;', '>': '&gt;'
+                        }[m]))+'</div></article>').join('')}catch(e) {
+                    grid.innerHTML = '<div class="empty-state">Gallery is temporarily unavailable. Please try again later.</div>'
+                }})();
+    </script>
+</body>
+</html>
