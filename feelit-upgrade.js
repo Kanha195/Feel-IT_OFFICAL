@@ -1,5 +1,5 @@
 /* Feel It Nepal — production-preserving upgrade layer
-   Loaded after script.js. Adds route builder, Hidden Gems, customer hotel/food
+   Loaded after script.js.   Adds route builder, Hidden Gems, customer hotel/food
    choices, transparent cost controls, and an operations dashboard without
    replacing the existing booking/auth/payment system. */
 (() => {
