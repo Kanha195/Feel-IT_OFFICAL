@@ -10,7 +10,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const CONTACT_INFO = {
   email: 'feelitofficial@gmail.com',
   phone: '+977-9808747221',
-  whatsapp: '9779712065778', // wa.me needs country code + number, no + or leading 0
+  whatsapp: '9779825344810', // wa.me needs country code + number, no + or leading 0
   instagram: 'feelitoffical', // <-- REPLACE with your real Instagram username (no @, no URL)
   address: 'Basundhara, Kathmandu, Nepal'
 };
