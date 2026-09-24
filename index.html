@@ -2,384 +2,429 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- The old tag declared type="image/svg+xml" while pointing at a .png,
-       which some browsers reject outright. Both formats are listed now, so
-       whichever file is actually in your repo gets used. -->
-  <link rel="icon" type="image/svg+xml" href="assets/logo-icon.png">
-  <link rel="alternate icon" type="image/png" href="assets/logo-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="google-site-verification" content="n-dQpXWAFa2JVXUlFbyvq-kBIQT-aNDraRdjgO57rN0" />
-  <meta name="description" content="Feel It pairs solo travelers with local riders who know Nepal's high roads. Guided motorbike tours across Pokhara, the Kathmandu Valley and Upper Mustang.">
-  <meta name="theme-color" content="#0f172a">
-  <title>Feel It — Guided Motorbike Journeys Across Nepal</title>
-
-  <!-- Google Fonts -->
+  <title>Feel It Nepal — Himalayan Motorbike Tours & Custom Expeditions</title>
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-
-  <!-- Leaflet Maps CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-
-  <!-- Supabase JS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Custom Stylesheet -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Page loader. Hidden by JS on load, and by a CSS keyframe at 6s as a
-     failsafe so it can never get stuck over the site. -->
-<div class="page-loader" id="pageLoader">
-  <div class="loader-stage">
-    <svg class="loader-bike" viewBox="0 0 200 90" aria-hidden="true">
-      <g class="speed-lines">
-        <line x1="0" y1="26" x2="34" y2="26"/>
-        <line x1="10" y1="40" x2="52" y2="40"/>
-        <line x1="0" y1="54" x2="30" y2="54"/>
-      </g>
-      <g class="bike-body">
-        <circle class="wheel" cx="58" cy="60" r="18"/>
-        <circle class="wheel" cx="146" cy="60" r="18"/>
-        <path class="frame" d="M58 60 L88 32 L112 32 L130 54 L146 60 M88 32 L100 60 M112 32 L106 54 L130 54"/>
-        <path class="frame" d="M70 32 L88 32"/>
-        <path class="frame" d="M130 54 L140 32"/>
-        <circle class="headlight" cx="150" cy="42" r="4"/>
-      </g>
-    </svg>
-    <div class="loader-road"><span></span></div>
-    <div class="loader-word">FEEL IT</div>
-    <div class="loader-sub">warming up the engine</div>
-  </div>
-</div>
-
-<header>
-  <div class="wrap nav">
-    <a href="#top" class="brand">
-      <img src="assets/logo-icon.png" width="38" height="38" alt="Feel It Nepal logo" class="brand-logo" onerror="this.onerror=null;this.src='assets/logo-icon.png'">
-      <span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span>
-    </a>
-    <div class="nav-links">
-      <a href="#tours">Tours</a>
-      <a href="#map">Map</a>
-      <a href="#routeBuilder">Build a route</a>
-      <a href="gallery.html">Gallery</a>
-      <a href="#how">How it works</a>
-      <a href="#safety">Safety</a>
-      <a href="#riderReviews">Reviews</a>
-      <a href="#pay">Payment</a>
-      <a href="#contact">Contact</a>
-      <a href="#guides">For guides</a>
-      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
-      <button class="btn btn-outline" id="authNavBtn" onclick="openAuthModal()">Login / Account</button>
-      <button class="menu-btn" id="menuBtn" onclick="toggleMobileMenu()" aria-label="Open menu" title="Menu">☰</button>
+  <!-- Cinematic Preloader -->
+  <div id="preloader" class="preloader">
+    <div class="preloader-glow"></div>
+    <div class="preloader-art"></div>
+    <div class="preloader-content">
+      <div class="loader-kicker">Feel It Nepal · Expedition OS</div>
+      <div class="loader-title">Himalayan Trails</div>
+      <p class="loader-sub">Preparing high-altitude routes, live weather telemetry, and secure booking engines.</p>
+      <div class="loader-progress"><span id="loaderProgress"></span></div>
+      <div class="loader-status"><span>INITIALIZING</span><span id="loaderPercent">0%</span></div>
     </div>
   </div>
-  <nav class="mobile-menu" id="mobileMenu">
-    <a href="#tours" onclick="closeMobileMenu()">Tours</a>
-    <a href="#map" onclick="closeMobileMenu()">Map</a>
-    <a href="#routeBuilder" onclick="closeMobileMenu()">Build a route</a>
-    <a href="gallery.html">Gallery</a>
-    <a href="#how" onclick="closeMobileMenu()">How it works</a>
-    <a href="#safety" onclick="closeMobileMenu()">Safety</a>
-    <a href="#riderReviews" onclick="closeMobileMenu()">Reviews</a>
-    <a href="#pay" onclick="closeMobileMenu()">Payment</a>
-    <a href="#contact" onclick="closeMobileMenu()">Contact</a>
-    <a href="#guides" onclick="closeMobileMenu()">For guides</a>
-    <a href="#" onclick="openAuthModal(); closeMobileMenu();">Login / Account</a>
-  </nav>
-</header>
 
-<section class="hero" id="top">
-  <div class="hero-media">
-    <!-- Replace with your own photo: a rider, a bike, a Nepal mountain road.
-         If the file is missing, the dark gradient background still shows fine. -->
-    <img src="assets/hero-photo.jpg" alt="A rider on a mountain road in Nepal" onerror="this.remove()">
-  </div>
-  <div class="hero-overlay"></div>
-  <div class="hero-inner">
-    <div class="hero-tag">Guided motorbike tours · Nepal</div>
-    <h1>Feel the road.<br>Not just the window.</h1>
-    <p>Feel It pairs solo travelers with local riders who know Nepal's high roads — Pokhara's lake rim, the Kathmandu Valley ridgeline, the Mustang desert crossing. No tinted glass, no fixed itinerary. Just you, a rider who knows the way, and the road under you.</p>
-    <div class="hero-ctas">
-      <a href="#tours" class="btn btn-primary">Browse tours</a>
-      <a href="#guides" class="btn btn-outline">I'm a local guide</a>
-    </div>
-    <div class="hero-trust" id="fiHeroTrust"></div>
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Shared Modal Overlay -->
+  <div id="overlay" class="overlay hidden" onclick="if(event.target === this) closeOverlay()">
+    <div id="modalContent" class="modal"></div>
   </div>
 
-  <!-- Live weather where you are (or Kathmandu, if you don't share location) -->
-  <div class="hero-weather" id="fiWeatherWidget">
-    <span class="hero-weather-icon">🌦️</span>
-    <span class="hero-weather-text">Checking the weather…</span>
-  </div>
-
-  <!-- Quick route finder -->
-  <div class="hero-plan" id="fiHeroPlan">
-    <h3>Plan your ride</h3>
-    <p class="hero-plan-sub">Find your next route</p>
-    <div class="field">
-      <label for="fiPlanRegion">Region</label>
-      <select id="fiPlanRegion"><option value="All">Anywhere in Nepal</option></select>
-    </div>
-    <div class="row-2">
-      <div class="field"><label for="fiPlanDate">Date</label><input type="date" id="fiPlanDate"></div>
-      <div class="field"><label for="fiPlanRiders">Riders</label><input type="number" id="fiPlanRiders" min="1" max="6" value="1"></div>
-    </div>
-    <button class="btn btn-primary" id="fiPlanGo" style="width:100%;">Find my ride →</button>
-  </div>
-</section>
-
-<section id="popular">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Popular routes</h2>
-      <p>A few of the rides people book first.</p>
-    </div>
-    <div class="popular-strip" id="fiPopularStrip"><div class="empty-state">Loading…</div></div>
-  </div>
-</section>
-
-<section id="tours">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Find your route</h2>
-      <p>Every tour is led by a named local rider. Filter by region to see what's running near you.</p>
-    </div>
-    <div class="filter-bar" id="filters"></div>
-    <div class="grid" id="tourGrid"></div>
-  </div>
-</section>
-
-<section id="map" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Where we ride</h2>
-      <p>Every region and dynamic destination added via our admin control panel.</p>
-    </div>
-    <div class="route-search-wrap" style="margin-bottom:14px;">
-      <input type="text" id="tourMapSearchInput" class="route-search-input" placeholder="Search a place — Pokhara, Mustang, Namche Bazaar…" autocomplete="off">
-      <div id="tourMapSearchResults" class="route-search-results"></div>
-    </div>
-    <div id="tourMap"></div>
-  </div>
-</section>
-
-<section id="routeBuilder" style="background:var(--bg);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Build your own route</h2>
-      <p>Search or click anywhere in Nepal to add a stop. We'll draw the route from our Basundhara base and estimate your package price live.</p>
-    </div>
-
-    <div class="route-search-wrap">
-      <input type="text" id="routeSearchInput" class="route-search-input" placeholder="Search a place in Nepal — Pokhara, Mustang, Namche Bazaar…" autocomplete="off">
-      <div id="routeSearchResults" class="route-search-results"></div>
-    </div>
-
-    <div class="route-builder-grid">
-      <div id="routeBuilderMap"></div>
-
-      <div class="route-side-panel">
-        <div class="route-panel-card">
-          <h3>Your route</h3>
-          <ul id="routeItineraryList" class="route-itinerary"></ul>
-          <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="resetRouteBuilder()">Reset route</button>
+  <!-- Header / Navigation -->
+  <header>
+    <div class="wrap nav">
+      <a href="#" class="brand">
+        <svg class="brand-logo-svg" width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="22" fill="url(#brandGrad)" stroke="var(--primary)" stroke-width="2"/>
+          <path d="M12 32L20 18L26 26L34 14L38 32H12Z" fill="var(--ink)" opacity="0.9"/>
+          <defs>
+            <linearGradient id="brandGrad" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+              <stop stop-color="var(--primary)" stop-opacity="0.25"/>
+              <stop offset="1" stop-color="var(--paper-2)" stop-opacity="0.9"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="brand-text">
+          <span class="display">FEEL IT NEPALS</span>
+          <span>Himalayan Motorbike Expeditions</span>
         </div>
+      </a>
+      
+      <nav class="nav-links">
+        <a href="#tours">Routes</a>
+        <a href="#customize">Custom Ride</a>
+        <a href="#mapSection">Live Map</a>
+        <a href="#guides">Elite Guides</a>
+        <a href="#contact">Contact</a>
+      </nav>
 
-        <div class="route-panel-card">
-          <h3>Trip details</h3>
-          <div class="field">
-            <label for="routeDays">Duration (days)</label>
-            <input type="number" id="routeDays" min="1" max="30" value="1" oninput="recalcRouteEstimate()">
+      <div class="nav-actions">
+        <button id="themeBtn" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀️</button>
+        <button id="authNavBtn" class="btn btn-outline" onclick="openAuthModal()">Login / Account</button>
+        <button class="menu-btn" onclick="toggleMobileMenu()" aria-label="Open Menu">☰</button>
+      </div>
+    </div>
+    
+    <!-- Mobile Menu Dropdown -->
+    <div id="mobileMenu" class="mobile-menu">
+      <a href="#tours" onclick="closeMobileMenu()">Routes</a>
+      <a href="#customize" onclick="closeMobileMenu()">Custom Ride</a>
+      <a href="#mapSection" onclick="closeMobileMenu()">Live Map</a>
+      <a href="#guides" onclick="closeMobileMenu()">Elite Guides</a>
+      <a href="#contact" onclick="closeMobileMenu()">Contact</a>
+    </div>
+  </header>
+
+  <!-- Hero Section with Physics Bulb & Rain Simulation -->
+  <section class="hero">
+    <!-- Real 90s Vintage Light Bulb with Physics Animation -->
+    <div class="physics-bulb-container" id="physicsBulbContainer">
+      <div class="bulb-wire"></div>
+      <div class="vintage-bulb" id="vintageBulb">
+        <div class="bulb-cap"></div>
+        <div class="bulb-filament"></div>
+        <div class="bulb-glow"></div>
+      </div>
+    </div>
+
+    <!-- Rain Overlay Simulation -->
+    <div class="rain-canvas-wrap" id="rainCanvasWrap"></div>
+
+    <div class="hero-backdrop"></div>
+    <div class="wrap hero-inner">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="hero-tag">Verified Himalayan Outfitter · 2026 Season</div>
+          <h1>RIDE THE <span>ROOF OF THE WORLD</span></h1>
+          <p class="hero-lead">Expertly guided off-road motorcycle expeditions through Upper Mustang, Annapurna, and remote Himalayan passes. Choose a curated route or build your custom ride.</p>
+          
+          <div class="hero-ctas">
+            <a href="#tours" class="btn btn-primary">Explore Verified Routes</a>
+            <a href="#customize" class="btn btn-ghost">Custom Ride Builder</a>
           </div>
-          <div class="field">
-            <label for="routePassengers">Passengers</label>
-            <input type="number" id="routePassengers" min="1" max="10" value="1" oninput="recalcRouteEstimate()">
-          </div>
-          <div class="field">
-            <label for="routeTerrain">Terrain</label>
-            <select id="routeTerrain" onchange="recalcRouteEstimate()">
-              <option value="highway">Highway</option>
-              <option value="offroad">Extreme Off-Road</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>What should we include?</label>
-            <div class="route-toggle-row">
-              <label class="route-toggle"><input type="checkbox" id="routeIncludeHotel" onchange="onRouteHotelToggle()">Hotel / lodging</label>
-              <label class="route-toggle"><input type="checkbox" id="routeIncludeFood" checked onchange="recalcRouteEstimate()">Food</label>
+
+          <div class="hero-trust-row">
+            <div>
+              <strong>100% LOCAL GUIDES</strong>
+              <span>Born and raised in the high Himalayas</span>
             </div>
-            <p class="route-summary-note" style="margin:4px 0 0;">Day rides default to no hotel — tick it if you want us to arrange lodging.</p>
+            <div>
+              <strong>TRANSPARENT PRICING</strong>
+              <span>No hidden day-1 surcharges</span>
+            </div>
+            <div>
+              <strong>SECURE BOOKINGS</strong>
+              <span>Bank transfer &amp; eSewa verified</span>
+            </div>
           </div>
         </div>
 
-        <div class="route-panel-card route-summary-card">
-          <h3>Estimated price</h3>
-          <div id="routeSummaryBody"></div>
+        <!-- Right Rail: Live Weather Widget & Quick Customizer -->
+        <div class="hero-rail">
+          <div id="weatherWidget" class="weather-card">
+            <div class="weather-card-bg"></div>
+            <div class="weather-topline">
+              <span id="weatherUpdated">Kathmandu · Live</span>
+              <span>LIVE METEOROLOGY</span>
+            </div>
+            <div class="weather-main">
+              <div id="weatherIcon" class="weather-icon">⛅</div>
+              <div>
+                <div id="weatherTemp" class="weather-temp">--°C</div>
+                <div id="weatherCondition" class="weather-condition">Connecting to Open-Meteo...</div>
+              </div>
+            </div>
+            <div class="weather-metrics">
+              <div><span>Humidity</span><strong id="weatherHumidity">--%</strong></div>
+              <div><span>Wind Speed</span><strong id="weatherWind">-- km/h</strong></div>
+              <div><span>Feels Like</span><strong id="weatherFeels">--°C</strong></div>
+            </div>
+          </div>
+
+          <div class="hero-customizer-card">
+            <h2>Quick Customizer</h2>
+            <p>Pick route &amp; add-ons instantly.</p>
+            <div class="mini-toggle-row">
+              <button class="mini-option active" id="miniHotelBtn" onclick="toggleHeroAddon('hotel')">
+                <span>🏨</span>
+                <div><b>Hotel</b><small>Included</small></div>
+              </button>
+              <button class="mini-option active" id="miniFoodBtn" onclick="toggleHeroAddon('food')">
+                <span>🍲</span>
+                <div><b>Food</b><small>Included</small></div>
+              </button>
+              <button class="mini-option active" id="miniGuideBtn">
+                <span>🛡️</span>
+                <div><b>Guide</b><small>Mandatory</small></div>
+              </button>
+            </div>
+            <a href="#customize" class="btn btn-primary btn-full">Open Full Custom Builder</a>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section id="how" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>How a booking runs</h2>
-      <p>Three stops between deciding and being on the road.</p>
-    </div>
-    <div class="milestones">
-      <div class="milestone"><span class="km">0</span><h3>Pick a route</h3><p>Compare region, distance and what's included, then check open dates.</p></div>
-      <div class="milestone"><span class="km">1</span><h3>Book & pay</h3><p>Choose Bank or eSewa, scan the QR, and submit your transaction reference.</p></div>
-      <div class="milestone"><span class="km">2</span><h3>Get your rider</h3><p>Our team verifies your payment and assigns a rider — their details appear in My Account once confirmed.</p></div>
+  <!-- Info Strip -->
+  <div class="info-strip">
+    <div class="wrap info-strip-grid">
+      <div><strong>Permits Handled</strong><span>ACAP, TIMS &amp; Restricted Area Permits</span></div>
+      <div><strong>Maintained Fleet</strong><span>Royal Enfield &amp; Off-Road CRF models</span></div>
+      <div><strong>Verified Support</strong><span>Support vehicles &amp; emergency satellite comms</span></div>
+      <div><strong>Direct Assistance</strong><span>Instant WhatsApp &amp; phone response</span></div>
     </div>
   </div>
-</section>
 
-<section id="safety" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Rider Safety & Protocols</h2>
-      <p>Your security on Nepal's high-altitude and winding terrain is our absolute priority.</p>
+  <!-- Tours Section -->
+  <section id="tours">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Curated Expeditions</div>
+          <h2>CHOOSE YOUR TRAIL</h2>
+        </div>
+        <div id="filters" class="filters"></div>
+      </div>
+      <div id="tourGrid" class="grid"></div>
     </div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Certified Local Pilots</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Every companion rider undergoes rigorous background screening, holding extensive documented experience on Himalayan gravel tracks, monsoon mud paths, and high mountain passes.</p>
-      </div>
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Top-Tier Gear Standards</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">DOT/ECE-approved full-face helmets, reinforced abrasion jackets, knee guards, and communication headsets are supplied fresh for every individual journey.</p>
-      </div>
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Emergency Route Protocols</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Our rides maintain satellite-enabled check-ins for remote passes like Mustang and Manang, backed by localized medical evacuation logistics partners.</p>
-      </div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section id="pay" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Two ways to pay</h2>
-      <p>Pick Bank Transfer or eSewa when you check out — you'll scan the correct QR and enter your transaction reference right there.</p>
-    </div>
-    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:stretch;">
-      <div class="form-card" style="flex:1;min-width:240px;">
-        <h3 style="margin-bottom:10px;">🏦 Bank Transfer</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Pay directly from any mobile banking app to our Laxmi Sunrise savings account. Your bank's app-generated QR or transfer reference works as your proof of payment.</p>
+  <!-- Interactive Map Section -->
+  <section id="mapSection">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Geographic Telemetry</div>
+          <h2>EXPLORE ROUTE MAP</h2>
+        </div>
+        <p>Click any destination marker on the map to inspect route details and launch bookings.</p>
       </div>
-      <div class="form-card" style="flex:1;min-width:240px;">
-        <h3 style="margin-bottom:10px;">📱 eSewa</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Scan & pay instantly using the eSewa app. Your eSewa transaction ID is all our team needs to verify the payment.</p>
-      </div>
+      <div id="tourMap"></div>
     </div>
-    <div style="margin-top:24px;">
-      <span class="badge" style="display:inline-block;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;">Every payment is manually verified before your rider is assigned</span>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section id="guides">
-  <div class="wrap">
-    <div class="guide-banner">
-      <div>
-        <h2>Ride these roads for a living?</h2>
-        <p>List your tour, set your own dates and price, and take bookings from travelers before they even land in Nepal.</p>
-      </div>
-      <button class="btn btn-primary" onclick="openGuideForm()">Apply as a guide</button>
-    </div>
-  </div>
-</section>
-
-<section id="riderReviews" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Rider stories</h2>
-      <p>Real reviews, pulled straight from each tour — nothing written by us.</p>
-    </div>
-    <div class="reviews-grid" id="fiReviewsGrid"><div class="empty-state">Loading…</div></div>
-  </div>
-</section>
-
-<section id="contact">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Contact us</h2>
-      <p>Questions before you book? Reach us directly or send a message.</p>
-    </div>
-    <div style="display:flex;gap:40px;flex-wrap:wrap;">
-      <div class="contact-details">
-        <div><strong>Email</strong><a id="contactEmailDisplay" href="#"></a></div>
-        <div><strong>Phone</strong><a id="contactPhoneDisplay" href="#"></a></div>
-        <div><strong>Based in</strong><span id="contactAddressDisplay"></span></div>
-        <div class="contact-socials">
-          <a id="contactWaLink" class="social-btn social-whatsapp" href="#" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.437-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.463 3.488"/></svg>
-            <span>WhatsApp</span>
-          </a>
-          <a class="social-btn social-instagram" href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
-            <span>Instagram</span>
-          </a>
+  <!-- Custom Ride Builder Section -->
+  <section id="customize" class="customize-section">
+    <div class="wrap">
+      <div class="section-head section-head-tight">
+        <div>
+          <div class="eyebrow">Tailored Adventures</div>
+          <h2>BUILD YOUR CUSTOM RIDE</h2>
+          <p>Customize every parameter of your journey. Day 1 uses the exact same standard daily riding rate with zero artificial markups.</p>
         </div>
       </div>
-      <div class="form-card" style="flex:2;min-width:280px;">
-        <h3 style="margin:0 0 14px;font-size:22px;">Leave a message</h3>
-        <div id="contactDynamic"><div class="empty-state">Loading…</div></div>
+
+      <div class="customizer-shell">
+        <div class="customizer-form">
+          <div class="step-tabs">
+            <span class="active">1. Route &amp; Duration</span>
+            <span>2. Hotel &amp; Food Add-ons</span>
+            <span>3. Instant Quote</span>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label for="customRoute">Select Base Route</label>
+              <select id="customRoute" onchange="updateCustomDaysForRoute()"></select>
+            </div>
+            <div class="field">
+              <label for="customDays">Duration (Days)</label>
+              <select id="customDays" onchange="updateCustomQuote()"></select>
+            </div>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label for="customDate">Start Date</label>
+              <input type="date" id="customDate">
+            </div>
+            <div class="field">
+              <label for="customTravelers">Travelers (1–6)</label>
+              <input type="number" id="customTravelers" value="1" min="1" max="6" oninput="updateCustomQuote()">
+            </div>
+          </div>
+
+          <div class="option-heading">
+            <span>Optional Add-ons</span>
+            <small>Toggle teahouse lodging &amp; meals on/off</small>
+          </div>
+
+          <div class="addon-grid">
+            <button type="button" class="addon-card active" id="customHotelBtn" onclick="toggleCustomOption('hotel')">
+              <span class="addon-icon">🏨</span>
+              <div>
+                <b>Hotel Stay</b>
+                <small>NPR 1,800 / day</small>
+              </div>
+              <div class="switch"><i></i></div>
+            </button>
+
+            <button type="button" class="addon-card active" id="customFoodBtn" onclick="toggleCustomOption('food')">
+              <span class="addon-icon">🍲</span>
+              <div>
+                <b>Meals &amp; Tea</b>
+                <small>NPR 1,400 / day</small>
+              </div>
+              <div class="switch"><i></i></div>
+            </button>
+
+            <button type="button" class="addon-card active locked" id="customGuideBtn">
+              <span class="addon-icon">🛡️</span>
+              <div>
+                <b>Expert Guide</b>
+                <small>Required for safety</small>
+              </div>
+              <div class="switch locked"><i></i></div>
+            </button>
+          </div>
+
+          <p class="custom-help">All custom rides include an expert local guide, premium bike, fuel, and necessary route permits.</p>
+        </div>
+
+        <!-- Live Quote Card -->
+        <div class="quote-card">
+          <div class="quote-kicker">Live Estimate</div>
+          <div id="customQuoteTitle" class="quote-title">Select Route</div>
+          <div id="customQuoteDuration" class="quote-duration">1 day · 1 traveler</div>
+          <div id="customQuoteTotal" class="quote-total">NPR 0</div>
+          <div class="quote-per">Total estimated price</div>
+
+          <div id="customQuoteBreakdown" class="quote-breakdown"></div>
+
+          <div class="quote-day-note">
+            💡 <strong>Transparent Pricing:</strong> Day 1 is billed at the exact same daily rate as every subsequent day.
+          </div>
+
+          <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="continueCustomBooking()">Proceed to Secure Checkout</button>
+        </div>
       </div>
     </div>
+  </section>
+
+  <!-- Guides & Network Section -->
+  <section id="guides">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Elite Local Riders</div>
+          <h2>LED BY HIMALAYAN VETERANS</h2>
+        </div>
+        <p>Every tour is led by seasoned locals who know every switchback, fuel stop, and teahouse owner in the region.</p>
+      </div>
+
+      <div class="milestones">
+        <div class="milestone">
+          <div class="km">01</div>
+          <h3>Bikash Gurung</h3>
+          <p>11 years riding the Annapurna and Pokhara hills. Fluent in English and high-altitude mechanical repairs.</p>
+        </div>
+        <div class="milestone">
+          <div class="km">02</div>
+          <h3>Tenzin Lama</h3>
+          <p>Born in Lo Manthang. Specialized in Upper Mustang high-desert crossings and remote gorge navigation.</p>
+        </div>
+        <div class="milestone">
+          <div class="km">03</div>
+          <h3>Sarita Rai</h3>
+          <p>Eastern hills specialist leading Ilam tea garden loops and peaceful ridge routes with immaculate local knowledge.</p>
+        </div>
+      </div>
+
+      <div class="guide-banner" style="margin-top:28px;">
+        <div>
+          <h2>Are you an experienced Himalayan rider?</h2>
+          <p>Join our elite network of local guides and lead expeditions across Nepal.</p>
+        </div>
+        <button class="btn btn-outline" onclick="openGuideForm()">Apply as a Guide</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact & Footer Section -->
+  <section id="contact" style="background:var(--paper);">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Get in Touch</div>
+          <h2>TALK TO OUR TEAM</h2>
+        </div>
+        <p>Have questions about permits, bike models, or custom itineraries? Reach out anytime.</p>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:24px;">
+        <div class="form-card">
+          <h3>Send a Message</h3>
+          <div class="field"><label>Your Name</label><input id="ctName" placeholder="Sushant Pariyar"></div>
+          <div class="field"><label>Email Address</label><input id="ctEmail" type="email" placeholder="you@example.com"></div>
+          <div class="field"><label>Message</label><textarea id="ctMessage" placeholder="Ask us anything about routes or gear..."></textarea></div>
+          <button class="btn btn-primary" onclick="submitContact()">Send Message</button>
+          <div id="contactNote" class="form-note"></div>
+        </div>
+
+        <div class="form-card" style="display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <h3>Direct Contacts</h3>
+            <p style="color:var(--ink-soft);font-size:14px;margin-bottom:18px;">We respond instantly via WhatsApp and phone during operational hours (Nepal Standard Time).</p>
+            
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+              <div><strong>Email:</strong> <span id="contactEmailDisplay"></span></div>
+              <div><strong>Phone / WhatsApp:</strong> <span id="contactPhoneDisplay"></span></div>
+              <div><strong>Base Office:</strong> <span id="contactAddressDisplay"></span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a id="contactWaLink" class="btn btn-primary" target="_blank" rel="noopener">Chat on WhatsApp</a>
+            <a id="contactIgLink" class="btn btn-outline" target="_blank" rel="noopener">Instagram DM</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="padding:40px 0;border-top:1px solid var(--line);text-align:center;font-size:13px;color:var(--ink-soft);">
+    <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div>&copy; 2026 Feel It Nepal. All rights reserved.</div>
+      <div style="display:flex;gap:18px;">
+        <a href="#" onclick="openTermsModal(); return false;">Terms &amp; Conditions</a>
+        <a href="#tours">Routes</a>
+        <a href="#customize">Custom Rides</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Quick Action Buttons -->
+  <div class="floating-actions">
+    <a id="floatWaLink" class="float-btn float-wa" target="_blank" rel="noopener" title="Chat on WhatsApp">💬</a>
+    <a id="floatIgLink" class="float-btn float-ig" target="_blank" rel="noopener" title="Instagram">📸</a>
   </div>
-</section>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-brand">
-      <div class="footer-mark">
-        <img src="assets/logo-icon.png" width="34" height="34" alt="Feel It Nepal logo" onerror="this.onerror=null;this.src='assets/logo-icon.png'">
-        <div class="display">FEEL IT</div>
-      </div>
-      <p>Guided motorbike journeys across Nepal, run with local riders who know the roads.</p>
-      <div class="footer-socials">
-        <a href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" class="social-btn social-instagram">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
-          <span>@feelitoffical</span>
-        </a>
-      </div>
-    </div>
-    <div class="footer-links">
-      <a href="#tours">Tours</a>
-      <a href="gallery.html">Gallery</a>
-      <a href="#safety">Safety</a>
-      <a href="#contact">Contact</a>
-      <a href="#" onclick="openTermsModal(); return false;">Terms &amp; conditions</a>
-      <p class="footer-copy">&copy; 2026 Feel It Nepal</p>
-    </div>
-  </div>
-</footer>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-<!-- Modal Overlay Container -->
-<div class="overlay hidden" id="overlay" role="dialog" aria-modal="true">
-  <div class="modal" id="modalContent"></div>
-</div>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- Site-wide weather effect layer (see style.css "Site-wide weather effects") -->
-<div id="fiSiteFx" aria-hidden="true"></div>
+  <!-- Custom Scripts Added -->
+  <script src="feelit-upgrade.js"></script>
+  <script src="feelit-extras.js"></script>
+  <script src="feelit-admin-route.js"></script>
+  <script src="feelit-hero.js"></script>
 
-<div id="toast-container"></div>
-
-<!-- Leaflet Map JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<!-- EmailJS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<!-- Main Logic JavaScript -->
-<script src="script.js"></script>
-<!-- Feel It Nepal upgrades: pricing/booking, weather + family section, admin + route -->
-<script src="feelit-upgrade.js"></script>
-<script src="feelit-extras.js"></script>
-<script src="feelit-admin-route.js"></script>
-<script src="feelit-hero.js"></script>
+  <!-- Main Application Script -->
+  <script src="script.js"></script>
 </body>
 </html>
