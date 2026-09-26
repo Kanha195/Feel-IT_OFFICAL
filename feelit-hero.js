@@ -1,4 +1,11 @@
-
+/* feelit-hero.js — load LAST in index.html, after feelit-admin-route.js:
+   <script src="feelit-hero.js"></script>
+   Fills in the redesigned hero: live weather chip, "plan your ride" quick
+   finder, a real-data popular-routes strip, trust badges, and a homepage
+   aggregate of REAL reviews (empty state if none yet — nothing here is
+   fabricated; the review system itself already lives in script.js and just
+   needed the `reviews` table, see feelit-reviews.sql). */
+(() => {
   'use strict';
   const $ = id => document.getElementById(id);
 
@@ -7,15 +14,46 @@
   const HQ_LAT = 27.7410, HQ_LNG = 85.3360;
   async function fillWeatherChip() {
     const el = $('fiWeatherWidget');
-    if (!el || typeof fetchWeatherFor !== 'function') return;
+    if (!el) return;
     const timeout = new Promise(res => setTimeout(() => res(null), 6500));
     const loc = window.fiGetLocation ? await Promise.race([window.fiGetLocation(), timeout]) : null;
     const { lat, lng } = loc || { lat: HQ_LAT, lng: HQ_LNG };
-    const text = await fetchWeatherFor(lat, lng);
-    el.querySelector('.hero-weather-text').textContent =
-      (text ? text.replace(/^\S+\s/, '') : "Weather's unavailable right now") + (loc ? ' — your location' : ' — Kathmandu');
-    const iconMatch = text && text.match(/^\S+/);
-    if (iconMatch) el.querySelector('.hero-weather-icon').textContent = iconMatch[0];
+    const locLabel = loc ? 'Your location' : 'Kathmandu';
+    if ($('fiWeatherLoc')) $('fiWeatherLoc').textContent = locLabel;
+
+    // Prefer full Open-Meteo payload for the rich card
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const c = data.current;
+      if (c) {
+        const code = c.weather_code;
+        const icon = (typeof weatherIcon === 'function') ? weatherIcon(code) : '🌡️';
+        const label = (typeof weatherLabel === 'function') ? weatherLabel(code) : 'Weather';
+        const iconEl = el.querySelector('.hero-weather-icon');
+        const textEl = el.querySelector('.hero-weather-text');
+        if (iconEl) iconEl.textContent = icon;
+        if (textEl) textEl.textContent = label;
+        if ($('fiWeatherTemp')) $('fiWeatherTemp').textContent = Math.round(c.temperature_2m) + '°';
+        if ($('fiWeatherHum')) $('fiWeatherHum').textContent = (c.relative_humidity_2m != null ? c.relative_humidity_2m + '%' : '—');
+        if ($('fiWeatherWind')) $('fiWeatherWind').textContent = (c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) + ' km/h' : '—');
+        if ($('fiWeatherFeels')) $('fiWeatherFeels').textContent = (c.apparent_temperature != null ? Math.round(c.apparent_temperature) + '°' : '—');
+        // Expose wind for the floating lamp in feelit-extras
+        window.__fiWindKmh = Number(c.wind_speed_10m) || 0;
+        window.dispatchEvent(new CustomEvent('fi-weather-updated', { detail: { wind: window.__fiWindKmh, code } }));
+        return;
+      }
+    } catch (e) { /* fall through */ }
+
+    if (typeof fetchWeatherFor === 'function') {
+      const text = await fetchWeatherFor(lat, lng);
+      const textEl = el.querySelector('.hero-weather-text');
+      if (textEl) textEl.textContent = text ? text.replace(/^\S+\s/, '') : "Weather's unavailable right now";
+      const iconMatch = text && text.match(/^\S+/);
+      const iconEl = el.querySelector('.hero-weather-icon');
+      if (iconMatch && iconEl) iconEl.textContent = iconMatch[0];
+    }
   }
   fillWeatherChip();
 
