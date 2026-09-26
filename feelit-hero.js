@@ -111,15 +111,15 @@
     } catch (e) {}
     if (!list.length) list = tours.filter(t => !t.hidden_gem).slice(0, 8);
     if (!list.length) list = tours.slice(0, 8);
-    const cardHtml = (t, clone) => {
+      const cardHtml = (t, clone) => {
       const zoom = Math.min(200, Math.max(100, Number(t.image_zoom) || 100));
       const pos = esc(t.image_position || 'center');
-      const img = t.imageUrl
-        ? imgTag(t.imageUrl, t.title, '', `style="object-fit:cover;object-position:${pos};transform:scale(${zoom/100});transform-origin:${pos};width:100%;height:100%;"`)
-        : `<div class="popular-card-body" style="padding-top:40px;text-align:center;color:var(--ink-soft);">📷</div>`;
+      const media = t.imageUrl
+        ? `<div class="popular-card-media">${imgTag(t.imageUrl, t.title, 'popular-card-img', `style="object-position:${pos};transform:scale(${zoom/100});transform-origin:${pos};"`)}</div>`
+        : `<div class="popular-card-media popular-card-media-empty">📷</div>`;
       return `
       <div class="popular-card${clone ? ' popular-card-clone' : ''}" data-tour-id="${esc(t.id)}" onclick="openTour('${esc(t.id)}')">
-        ${img}
+        ${media}
         <div class="popular-card-body">
           <div class="popular-card-region">${esc(t.region)}</div>
           <h4 class="popular-card-title">${esc(t.title)}</h4>
