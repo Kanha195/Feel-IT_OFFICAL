@@ -310,9 +310,13 @@
     const el = $('fiSiteFx');
     if (!el) return;
     siteFlashTok.n++; // cancel any pending flash loop from the previous kind
+    window.__fiWeatherKind = kind || null;
     el.className = kind ? `fi-on fi-${kind}` : '';
     el.innerHTML = kind ? buildBits(kind, true) : '';
     if (kind === 'thunder' && !reduce) flashLoop(el, siteFlashTok);
+    window.dispatchEvent(new CustomEvent('fi-weather-updated', {
+      detail: { wind: window.__fiWindKmh || 8, kind, code: null }
+    }));
   }
 
   async function refreshSite() {
@@ -361,8 +365,23 @@
     if(!lamp || reduce) return;
     let x = window.innerWidth * 0.72, y = window.innerHeight * 0.18;
     let vx = 0.15, vy = 0.08;
-    let wind = 8; // km/h default until weather updates
-    let on = true;
+    let wind = 8;
+    let on = false; // only on in dark weather (rain / thunder / fog / night)
+
+    const isDarkCondition = (kind, code) => {
+      const hour = new Date().getHours();
+      const night = hour < 6 || hour >= 19;
+      if(kind === 'rain' || kind === 'thunder' || kind === 'fog') return true;
+      if(night) return true;
+      // overcast / heavy cloud codes
+      if(code != null && [3, 45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(Number(code))) return true;
+      return false;
+    };
+
+    const setLampVisible = (show) => {
+      on = !!show;
+      lamp.classList.toggle('fi-lamp-on', on);
+    };
 
     const applyWind = (w) => {
       wind = Math.max(2, Math.min(40, Number(w) || 8));
@@ -372,10 +391,13 @@
     };
     window.addEventListener('fi-weather-updated', e => {
       if(e.detail && e.detail.wind != null) applyWind(e.detail.wind);
+      const kind = e.detail?.kind || window.__fiWeatherKind;
+      const code = e.detail?.code;
+      setLampVisible(isDarkCondition(kind, code));
     });
     if(window.__fiWindKmh) applyWind(window.__fiWindKmh);
-
-    lamp.classList.add('fi-lamp-on');
+    // start hidden until weather arrives
+    setLampVisible(false);
     let last = performance.now();
     const tick = (now) => {
       if(!on || document.hidden){ requestAnimationFrame(tick); return; }
