@@ -512,16 +512,18 @@ function renderHiddenGems(){
   if(!el) return;
   const gems = tours.filter(t => t.hidden_gem);
   if(!gems.length){
-    el.innerHTML = '<div class="empty-state">No hidden gems listed yet — add short rides in Admin and mark them as Hidden Gem.</div>';
+    el.innerHTML = '<div class="empty-state">Short local rides will show up here soon.</div>';
     return;
   }
   el.innerHTML = gems.map(t=>{
+    const zoom = Math.min(200, Math.max(100, Number(t.image_zoom) || 100));
+    const pos = esc(t.image_position || 'center');
     const art = t.imageUrl
-      ? imgTag(t.imageUrl, t.title, 'card-photo')
+      ? imgTag(t.imageUrl, t.title, 'card-photo', `style="object-fit:cover;object-position:${pos};transform:scale(${zoom/100});transform-origin:${pos};width:100%;height:100%;"`)
       : `<svg class="card-art-placeholder" width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#fbbf24"/></svg>`;
     return `
       <article class="card">
-        <div class="card-art" data-img-holder>
+        <div class="card-art" data-img-holder style="overflow:hidden;">
           <span class="gem-badge">Hidden Gem</span>
           ${art}<span class="card-art-fallback">Photo coming soon</span>
         </div>
@@ -1350,9 +1352,9 @@ async function checkUserSession(){
   const btn = document.getElementById('authNavBtn');
   if(btn){
     if(sessionUser){
-      btn.textContent = 'My Account';
+      btn.innerHTML = '<span class="auth-label-full">My Account</span><span class="auth-label-short">Account</span>';
     } else {
-      btn.textContent = 'Login / Account';
+      btn.innerHTML = '<span class="auth-label-full">Login / Account</span><span class="auth-label-short">Login</span>';
     }
   }
   renderContactSection(); // keep the homepage Contact section in sync with login state
@@ -1380,10 +1382,10 @@ function showAuthTabs(mode = 'login'){
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.19v3.15C3.21 21.34 7.28 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.19C.43 8.14 0 9.89 0 12s.43 3.86 1.19 5.39l4.08-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.28 0 3.21 2.66 1.19 6.61l4.08 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
         Continue with Google
       </button>
-      <div style="text-align:center;margin:16px 0;color:var(--ink-soft);font-size:13px;">— OR EMAIL / ADMIN LOGIN —</div>
+      <div style="text-align:center;margin:16px 0;color:var(--ink-soft);font-size:13px;">— OR EMAIL LOGIN —</div>
 
-      <div class="field"><label>Email Address or Admin ID</label><input id="authEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
-      <div class="field"><label>Password or Admin Passcode</label><input id="authPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
+      <div class="field"><label>Email Address</label><input id="authEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
+      <div class="field"><label>Password</label><input id="authPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault();handleStandardLogin();}"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="loginBtn" onclick="handleStandardLogin()">Login</button>
     </div>
   `;
@@ -1420,7 +1422,7 @@ async function handleStandardLogin(){
     const token = crypto.getRandomValues(new Uint8Array(16));
     const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
     sessionStorage.setItem('feelit_admin_session', JSON.stringify({ t: Date.now(), k: tokenHex }));
-    window.location.href = 'admin.html';
+    window.location.href = 'index.html?admin=1';
     return;
   }
 
@@ -1428,7 +1430,7 @@ async function handleStandardLogin(){
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
   restoreBtn();
   if(error){
-    showToast('Invalid credentials or admin passcode.', 'error');
+    showToast('Invalid email or password.', 'error');
   } else {
     checkUserSession();
     renderUserDashboard({ name: data.user.email.split('@')[0], email: data.user.email });
@@ -1671,9 +1673,10 @@ async function submitGuideApp(){
 
 /* ---------------- Professional Admin Panel ---------------- */
 async function renderAdminPanel(tab){
-  const tabs = ['bookings', 'tours', 'addTour', 'costs', 'weather', 'users', 'messages', 'reviews', 'photos', 'ad'];
+  const tabs = ['bookings', 'tours', 'addTour', 'featured', 'costs', 'weather', 'settings', 'users', 'messages', 'reviews', 'photos', 'ad'];
   const labels = {
-    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', costs:'⛽ Costs', weather:'🌦️ Weather FX',
+    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', featured:'⭐ Featured',
+    costs:'⛽ Costs', weather:'🌦️ Weather FX', settings:'⚙️ Site',
     users:'👥 Customers', messages:'💬 Messages', reviews:'⭐ Reviews',
     photos:'🖼️ Gallery', ad:'📢 Popup Ad'
   };
@@ -1868,6 +1871,14 @@ async function renderAdminPanel(tab){
 
   if(tab === 'weather'){
     body = buildAdminWeatherBody();
+  }
+
+  if(tab === 'featured'){
+    body = buildAdminFeaturedBody();
+  }
+
+  if(tab === 'settings'){
+    body = buildAdminSettingsBody();
   }
 
   const modalEl = document.getElementById('modalContent');
@@ -2688,6 +2699,152 @@ function saveCostsToStorage(c){
 }
 
 
+
+/* ---- Featured (Popular) tours control ---- */
+function loadFeaturedIds(){
+  try {
+    const raw = localStorage.getItem('feelit_featured_ids');
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length) return arr.map(String);
+    }
+  } catch(e){}
+  // default: first 8 tours
+  return (typeof tours !== 'undefined' ? tours : []).slice(0, 8).map(t => String(t.id));
+}
+function saveFeaturedIds(ids){
+  localStorage.setItem('feelit_featured_ids', JSON.stringify(ids.map(String)));
+}
+function buildAdminFeaturedBody(){
+  const selected = new Set(loadFeaturedIds());
+  const rows = (tours || []).map(t => {
+    const on = selected.has(String(t.id));
+    return `<label class="feat-pick-row" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--bg);cursor:pointer;">
+      <input type="checkbox" class="feat-pick" value="${esc(t.id)}" ${on?'checked':''} style="width:18px;height:18px;">
+      <span style="flex:1;min-width:0;">
+        <strong style="display:block;">${esc(t.title)}</strong>
+        <small style="color:var(--ink-soft);">${esc(t.region)} · ${fmtNPR(t.price)}</small>
+      </span>
+      ${t.hidden_gem ? '<span class="gem-badge" style="position:static;">Hidden Gem</span>' : ''}
+    </label>`;
+  }).join('') || '<p class="empty-state">No tours yet. Add tours first.</p>';
+  return `
+    <div class="form-card" style="max-width:100%;">
+      <h3>Featured / Popular tours</h3>
+      <p class="form-note">Checked tours appear in the homepage <strong>Featured Bike Tours</strong> strip (in the order shown). Uncheck to remove. Order = current list order — use Tours tab to edit details.</p>
+      <div id="featPickList" style="max-height:420px;overflow:auto;margin:12px 0;">${rows}</div>
+      <button type="button" class="btn btn-primary" onclick="saveFeaturedFromAdmin()">Save featured list</button>
+      <button type="button" class="btn btn-outline" style="margin-left:8px;" onclick="selectAllFeatured(true)">Select all</button>
+      <button type="button" class="btn btn-outline" style="margin-left:8px;" onclick="selectAllFeatured(false)">Clear</button>
+    </div>`;
+}
+function selectAllFeatured(on){
+  document.querySelectorAll('.feat-pick').forEach(cb => { cb.checked = !!on; });
+}
+function saveFeaturedFromAdmin(){
+  const ids = [...document.querySelectorAll('.feat-pick:checked')].map(cb => cb.value);
+  if(!ids.length){ showToast('Pick at least one tour for Featured.', 'error'); return; }
+  saveFeaturedIds(ids);
+  if(typeof renderTours === 'function') renderTours();
+  showToast('Featured tours updated on the homepage.', 'success');
+}
+
+/* ---- Site-wide settings (contact, socials, hero text) ---- */
+function loadSiteSettings(){
+  const defaults = {
+    wa: (typeof CONTACT_INFO !== 'undefined' && CONTACT_INFO.whatsapp) ? CONTACT_INFO.whatsapp : '9779825344810',
+    ig: 'https://www.instagram.com/feelitoffical/',
+    email: (typeof CONTACT_INFO !== 'undefined' && CONTACT_INFO.email) ? CONTACT_INFO.email : '',
+    phone: '',
+    address: (typeof CONTACT_INFO !== 'undefined' && CONTACT_INFO.address) ? CONTACT_INFO.address : '',
+    heroTag: 'Guided bike tours in Nepal',
+    heroTitle1: 'More Than a Ride,',
+    heroTitle2: "It's a Story",
+    heroBlurb: 'Explore breathtaking landscapes, hidden villages and ancient cultures with expert local riders. Your Himalayan adventure starts here.'
+  };
+  try {
+    const raw = localStorage.getItem('feelit_site_settings');
+    if(raw) return { ...defaults, ...JSON.parse(raw) };
+  } catch(e){}
+  return defaults;
+}
+function saveSiteSettingsObj(obj){
+  localStorage.setItem('feelit_site_settings', JSON.stringify(obj));
+}
+function buildAdminSettingsBody(){
+  const s = loadSiteSettings();
+  return `
+    <div class="form-card" style="max-width:100%;">
+      <h3>Site settings</h3>
+      <p class="form-note">These update what visitors see (this browser / device). For permanent global change keep assets on GitHub; settings here override contact + hero text live.</p>
+      <div class="row-2">
+        <div class="field"><label>WhatsApp number (wa.me format)</label><input id="setWa" value="${esc(s.wa)}" placeholder="9779825344810"></div>
+        <div class="field"><label>Instagram URL</label><input id="setIg" value="${esc(s.ig)}" placeholder="https://www.instagram.com/…"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Public email</label><input id="setEmail" value="${esc(s.email)}" type="email"></div>
+        <div class="field"><label>Phone display</label><input id="setPhone" value="${esc(s.phone)}" placeholder="+977 …"></div>
+      </div>
+      <div class="field"><label>Address</label><input id="setAddress" value="${esc(s.address)}"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:16px 0;">
+      <div class="field"><label>Hero tag (small line)</label><input id="setHeroTag" value="${esc(s.heroTag)}"></div>
+      <div class="row-2">
+        <div class="field"><label>Hero title line 1</label><input id="setHeroT1" value="${esc(s.heroTitle1)}"></div>
+        <div class="field"><label>Hero title accent</label><input id="setHeroT2" value="${esc(s.heroTitle2)}"></div>
+      </div>
+      <div class="field"><label>Hero blurb</label><textarea id="setHeroBlurb" rows="3">${esc(s.heroBlurb)}</textarea></div>
+      <button type="button" class="btn btn-primary" onclick="saveSiteSettingsFromAdmin()">Save &amp; apply to site</button>
+    </div>`;
+}
+function saveSiteSettingsFromAdmin(){
+  const s = {
+    wa: (document.getElementById('setWa')?.value || '').trim(),
+    ig: (document.getElementById('setIg')?.value || '').trim(),
+    email: (document.getElementById('setEmail')?.value || '').trim(),
+    phone: (document.getElementById('setPhone')?.value || '').trim(),
+    address: (document.getElementById('setAddress')?.value || '').trim(),
+    heroTag: (document.getElementById('setHeroTag')?.value || '').trim(),
+    heroTitle1: (document.getElementById('setHeroT1')?.value || '').trim(),
+    heroTitle2: (document.getElementById('setHeroT2')?.value || '').trim(),
+    heroBlurb: (document.getElementById('setHeroBlurb')?.value || '').trim()
+  };
+  saveSiteSettingsObj(s);
+  applySiteSettings(s);
+  showToast('Site settings applied.', 'success');
+}
+function applySiteSettings(s){
+  s = s || loadSiteSettings();
+  try {
+    if(typeof CONTACT_INFO !== 'undefined'){
+      if(s.wa) CONTACT_INFO.whatsapp = s.wa.replace(/[^\d]/g,'');
+      if(s.email) CONTACT_INFO.email = s.email;
+      if(s.address) CONTACT_INFO.address = s.address;
+    }
+  } catch(e){}
+  // Float socials
+  document.querySelectorAll('.float-wa, a[href*="wa.me"]').forEach(a => {
+    if(a.classList.contains('float-wa') || a.id === 'footerWaLink' || a.id === 'contactWaLink'){
+      if(s.wa) a.href = 'https://wa.me/' + s.wa.replace(/[^\d]/g,'');
+    }
+  });
+  document.querySelectorAll('.float-ig, a[href*="instagram.com"]').forEach(a => {
+    if(a.classList.contains('float-ig') || a.id === 'footerIgLink' || a.id === 'contactIgLink'){
+      if(s.ig) a.href = s.ig;
+    }
+  });
+  // Hero text
+  const tag = document.querySelector('.hero-tag');
+  if(tag && s.heroTag) tag.textContent = s.heroTag;
+  const h1 = document.querySelector('.hero-inner h1');
+  if(h1 && (s.heroTitle1 || s.heroTitle2)){
+    h1.innerHTML = `${esc(s.heroTitle1)}<br><span class="hero-accent">${esc(s.heroTitle2)}</span>`;
+  }
+  const blurb = document.querySelector('.hero-inner p');
+  if(blurb && s.heroBlurb) blurb.textContent = s.heroBlurb;
+  if(typeof initContactDisplay === 'function') initContactDisplay();
+}
+
+
 function buildAdminWeatherBody(){
   const cur = window.__fiWeatherKind || 'none';
   return `
@@ -2857,6 +3014,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if(img) img.src = hb;
     }
   } catch(e){}
+  try { applySiteSettings(loadSiteSettings()); } catch(e){}
   initContactDisplay();
   initFloatingWhatsApp();
   initEmailJS();
