@@ -892,8 +892,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .hero-media{position:absolute;inset:0;z-index:0;}
 .hero-media img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
 .hero-overlay{position:absolute;inset:0;z-index:1;
-  background:linear-gradient(100deg,rgba(15,23,42,.95) 15%,rgba(15,23,42,.65) 55%,rgba(15,23,42,.35) 100%),
-             linear-gradient(0deg,rgba(15,23,42,.9),rgba(15,23,42,.2) 40%);}
+  /* Lighter so assets/1.png stays visible — text still readable on the left */
+  background:linear-gradient(105deg,rgba(15,23,42,.78) 0%,rgba(15,23,42,.45) 42%,rgba(15,23,42,.15) 70%,rgba(15,23,42,.05) 100%),
+             linear-gradient(0deg,rgba(15,23,42,.55) 0%,transparent 45%);}
+[data-theme="light"] .hero-overlay{
+  background:linear-gradient(105deg,rgba(15,23,42,.7) 0%,rgba(15,23,42,.35) 45%,rgba(15,23,42,.1) 100%),
+             linear-gradient(0deg,rgba(15,23,42,.4) 0%,transparent 50%);}
 .hero-inner{padding:110px 24px 200px;}
 
 .hero-trust{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:8px;font-size:13px;color:var(--ink-soft);}
@@ -1091,3 +1095,163 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .nav-links .btn-outline{display:none;}
   .menu-btn{display:flex;align-items:center;justify-content:center;}
 }
+
+
+/* ---- Reference-style featured + customize row ---- */
+.featured-layout{
+  display:grid;
+  grid-template-columns:1fr minmax(280px,340px);
+  gap:28px;
+  align-items:start;
+}
+.featured-main{min-width:0;}
+.customize-card{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:22px 20px;
+  position:sticky;top:88px;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+.customize-card h3{margin:0 0 6px;font-size:22px;display:flex;align-items:center;gap:8px;}
+.customize-card .cust-sub{font-size:13px;color:var(--ink-soft);margin:0 0 16px;line-height:1.5;}
+.cust-toggles{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:16px;}
+.cust-toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);
+  font-size:13px;
+}
+.cust-toggle strong{display:block;font-size:14px;color:var(--ink);}
+.cust-toggle small{color:var(--ink-soft);font-size:11px;}
+.cust-toggle .cust-ico{font-size:18px;margin-right:8px;}
+.cust-toggle label{display:flex;align-items:center;flex:1;cursor:pointer;gap:4px;}
+/* iOS-style switch */
+.switch{position:relative;width:44px;height:24px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{
+  position:absolute;inset:0;background:#334155;border-radius:999px;cursor:pointer;transition:.2s;
+}
+.switch .slider::before{
+  content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;
+  background:#fff;border-radius:50%;transition:.2s;
+}
+.switch input:checked + .slider{background:var(--primary);}
+.switch input:checked + .slider::before{transform:translateX(20px);}
+.switch input:disabled + .slider{opacity:.55;cursor:not-allowed;}
+.cust-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.cust-row .field{margin-bottom:0;}
+.cust-row label{font-size:12px;}
+.trust-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+  margin-top:36px;padding-top:28px;border-top:1px solid var(--line);
+}
+.trust-item{text-align:center;font-size:12px;color:var(--ink-soft);}
+.trust-item .ti-ico{font-size:22px;display:block;margin-bottom:6px;}
+.trust-item strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px;}
+
+@media(max-width:960px){
+  .featured-layout{grid-template-columns:1fr;}
+  .customize-card{position:static;}
+  .trust-strip{grid-template-columns:repeat(2,1fr);}
+}
+
+/* Float socials: single column, IG above WA so neither hides the other */
+.float-socials{
+  position:fixed;right:16px;bottom:16px;z-index:60;
+  display:flex;flex-direction:column-reverse;gap:12px;
+  pointer-events:none;
+}
+.float-socials a{pointer-events:auto;}
+.wa-float-btn{display:none !important;} /* never show legacy second WA */
+
+/* Hero text always light on photo */
+.hero-inner h1,.hero .hero-tag,.hero-inner p{color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.45);}
+.hero-inner p{color:rgba(255,255,255,.88);}
+.hero-trust span{color:rgba(255,255,255,.9);}
+.hero-ctas .btn-outline{border-color:#fff;color:#fff;}
+.hero-ctas .btn-outline:hover{background:#fff;color:#0f172a;}
+
+/* Taller hero like reference */
+.hero{min-height:min(88vh,780px);}
+.hero-inner{padding:120px 24px 100px;max-width:560px;margin:0;}
+.hero-weather-card{top:120px;}
+
+@media(max-width:900px){
+  .hero{min-height:auto;}
+  .hero-inner{max-width:100%;padding:88px 20px 200px;}
+}
+
+
+/* ========== SPACING + HERO CLARITY FIX (Sep 2026) ========== */
+section{padding:48px 0;}
+#popular{padding:36px 0 48px;}
+#tours{padding:40px 0;}
+.section-head{margin:0 0 24px;}
+.section-head h2{font-size:36px;margin:0 0 8px;}
+
+/* Hero: show background photo clearly, less empty space */
+.hero{
+  min-height:520px !important;
+  max-height:none;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  position:relative;
+}
+.hero-media{position:absolute;inset:0;z-index:0;}
+.hero-media img{
+  width:100%;height:100%;
+  object-fit:cover;
+  object-position:center 35%;
+  display:block;
+  /* slight lift so photo isn't crushed dark */
+  filter:brightness(1.05) contrast(1.05);
+}
+.hero-overlay{
+  position:absolute;inset:0;z-index:1;
+  background:linear-gradient(100deg,
+    rgba(15,23,42,.72) 0%,
+    rgba(15,23,42,.4) 38%,
+    rgba(15,23,42,.12) 65%,
+    rgba(15,23,42,.05) 100%) !important;
+}
+[data-theme="light"] .hero-overlay{
+  background:linear-gradient(100deg,
+    rgba(15,23,42,.65) 0%,
+    rgba(15,23,42,.3) 45%,
+    rgba(15,23,42,.08) 100%) !important;
+}
+.hero-inner{
+  position:relative;z-index:2;
+  padding:88px 24px 72px !important;
+  max-width:520px !important;
+  margin:0 !important;
+}
+.hero-weather-card{
+  top:100px !important;
+  right:24px !important;
+}
+@media(max-width:900px){
+  .hero{min-height:auto !important;}
+  .hero-inner{padding:72px 18px 180px !important;max-width:100% !important;}
+  .hero-weather-card{
+    position:relative !important;
+    top:auto !important;right:auto !important;left:auto !important;
+    margin:0 16px 20px;width:auto;
+  }
+  /* stack weather under hero content on mobile without huge gap */
+  .hero{display:flex;flex-direction:column;}
+  .hero-inner{order:1;}
+  .hero-weather-card{order:2;}
+}
+
+/* Popular strip tighter */
+.popular-strip{gap:14px;padding:4px 0 8px;}
+.popular-card{flex:0 0 220px;}
+.popular-card img{height:120px;}
+.featured-layout{gap:20px;}
+.trust-strip{margin-top:24px;padding-top:20px;}
+
+/* Float buttons never overlap */
+.float-socials{z-index:70;}
+.wa-float-btn{display:none !important;}
