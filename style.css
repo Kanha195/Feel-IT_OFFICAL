@@ -1092,7 +1092,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 /* Clean mobile nav overflow */
 @media(max-width:820px){
   .nav-links a:not(.btn):not(.theme-toggle){display:none;}
-  .nav-links .btn-outline{display:none;}
+  /* Keep Login visible on phone — only hide Book Now if space is tight */
+  .nav-links .book-now-nav{display:none;}
+  .nav-links .auth-nav-btn{display:inline-flex !important;align-items:center;}
   .menu-btn{display:flex;align-items:center;justify-content:center;}
 }
 
@@ -1255,3 +1257,174 @@ section{padding:48px 0;}
 /* Float buttons never overlap */
 .float-socials{z-index:70;}
 .wa-float-btn{display:none !important;}
+
+
+/* ---- Popular strip left/right scroll buttons ---- */
+.popular-strip-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:0;
+}
+.popular-strip-wrap .popular-strip{
+  flex:1;
+  min-width:0;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.popular-nav{
+  flex-shrink:0;
+  width:40px;height:40px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--ink);
+  font-size:26px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  transition:background .15s,border-color .15s,transform .15s,opacity .15s;
+  z-index:2;
+}
+.popular-nav:hover{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#0f172a;
+  transform:scale(1.06);
+}
+.popular-nav:disabled{
+  opacity:.35;
+  cursor:default;
+  pointer-events:none;
+}
+.popular-nav-left{margin-right:6px;}
+.popular-nav-right{margin-left:6px;}
+@media(max-width:600px){
+  .popular-nav{width:34px;height:34px;font-size:22px;}
+}
+
+
+/* ---- Login always findable on phone ---- */
+.auth-label-short{display:none;}
+.auth-label-full{display:inline;}
+.auth-nav-btn{
+  white-space:nowrap;
+}
+.mobile-login-link{
+  font-weight:700 !important;
+  color:var(--primary) !important;
+  border-bottom:none !important;
+  margin-top:8px;
+  padding:14px 0 !important;
+  background:var(--primary-tint);
+  border-radius:10px;
+  text-align:center;
+  border:1px solid var(--primary) !important;
+}
+@media(max-width:820px){
+  .auth-label-full{display:none;}
+  .auth-label-short{display:inline;}
+  .auth-nav-btn{
+    display:inline-flex !important;
+    padding:8px 12px !important;
+    font-size:13px !important;
+    min-height:40px;
+  }
+  .nav-links{
+    gap:8px !important;
+  }
+}
+@media(max-width:380px){
+  .auth-nav-btn{padding:8px 10px !important;font-size:12px !important;}
+}
+
+
+/* ========== MOBILE HEADER + RESPONSIVE SYSTEM (refined) ========== */
+header{
+  position:sticky;top:0;z-index:100;
+  background:color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:10px 0;min-height:56px;
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;color:var(--ink);}
+.brand-logo{width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0;}
+.brand-text{display:flex;flex-direction:column;line-height:1.1;min-width:0;}
+.brand-text .display{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;}
+.brand-text span:last-child{font-size:10px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+
+.nav-links{display:flex;align-items:center;gap:14px;flex-wrap:nowrap;}
+.nav-links > a:not(.btn){font-size:14px;white-space:nowrap;}
+
+/* Desktop default labels */
+.auth-label-short{display:none;}
+.auth-label-full{display:inline;}
+
+/* Large tablet */
+@media(max-width:1100px){
+  .nav-links > a:not(.btn):not(.theme-toggle){font-size:13px;gap:10px;}
+  .nav-links{gap:10px;}
+}
+
+/* Tablet / small laptop — collapse text links, keep actions */
+@media(max-width:900px){
+  .nav-links > a:not(.btn):not(.theme-toggle){display:none;}
+  .book-now-nav{display:none !important;}
+  .auth-label-full{display:none;}
+  .auth-label-short{display:inline;}
+  .auth-nav-btn{
+    display:inline-flex !important;
+    align-items:center;justify-content:center;
+    padding:8px 12px !important;
+    font-size:13px !important;
+    min-height:40px;
+    border-radius:10px;
+  }
+  .menu-btn{display:flex !important;align-items:center;justify-content:center;}
+  .theme-toggle{width:40px;height:40px;flex-shrink:0;}
+  .brand-text span:last-child{display:none;}
+  .nav-links{gap:8px;}
+}
+
+/* Phone */
+@media(max-width:600px){
+  .wrap{padding:0 14px;}
+  .nav{padding:8px 0;}
+  .brand-logo{width:32px;height:32px;}
+  .brand-text .display{font-size:18px;}
+  .auth-nav-btn{padding:7px 10px !important;font-size:12px !important;min-height:36px;}
+  .menu-btn,.theme-toggle{width:36px;height:36px;}
+  .hero-inner{padding:64px 14px 48px !important;}
+  .hero-weather-card{margin:0 12px 16px;}
+  .section-head h2{font-size:28px !important;}
+  .popular-nav{width:32px;height:32px;font-size:20px;}
+  .float-socials{right:10px;bottom:10px;gap:10px;}
+  .float-socials a{width:44px;height:44px;}
+}
+
+/* Very small phones */
+@media(max-width:380px){
+  .brand-text .display{font-size:16px;}
+  .auth-nav-btn{padding:6px 8px !important;font-size:11px !important;}
+  .nav-links{gap:6px;}
+}
+
+/* Mobile menu polish */
+.mobile-menu{background:var(--bg);}
+.mobile-menu a{padding:14px 4px;font-size:15px;}
+.mobile-login-link{
+  display:block;margin-top:10px;padding:14px !important;
+  text-align:center;font-weight:700;color:var(--primary) !important;
+  background:var(--primary-tint);border:1px solid var(--primary) !important;
+  border-radius:12px !important;
+}
+
+/* Safe area for notched phones */
+@supports(padding:max(0px)){
+  .float-socials{bottom:max(12px, env(safe-area-inset-bottom));right:max(12px, env(safe-area-inset-right));}
+  header{padding-top:env(safe-area-inset-top);}
+}
