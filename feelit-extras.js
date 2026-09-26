@@ -1,10 +1,4 @@
-/* feelit-extras.js — load AFTER feelit-upgrade.js (index.html only):
-   <script src="feelit-extras.js"></script>
-   Adds: family + high-altitude safety section, sample GPS tracker, weather effects
-   (rain / snow / fog / thunderstorm / clear) in the tour modal AND site-wide.
-   Lag-safe: the tracker ticks every 2.6s and pauses off-screen / in background tabs;
-   weather effects are a small, fixed number of GPU-only CSS elements (transform/opacity
-   only, no layout thrash), pause off-screen/hidden-tab, and respect "reduce motion". */
+
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
