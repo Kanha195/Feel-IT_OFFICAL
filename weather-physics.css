@@ -1,0 +1,383 @@
+/* ============================================================================
+   WEATHER PHYSICS ENGINE CSS
+   Real weather animations with physics-based particle effects
+   ============================================================================ */
+
+:root {
+  --weather-opacity: 0.6;
+  --wind-strength: 0;
+}
+
+/* Weather Effects Container */
+.weather-fx {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* RAIN EFFECTS */
+.rain-drop {
+  position: absolute;
+  width: 2px;
+  height: 15px;
+  background: linear-gradient(to bottom, rgba(100, 150, 200, 0.8), rgba(100, 150, 200, 0.3));
+  box-shadow: 0 0 3px rgba(100, 150, 200, 0.6);
+  opacity: var(--weather-opacity);
+  animation: rainFall linear infinite;
+}
+
+@keyframes rainFall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotateZ(0deg);
+  }
+  100% {
+    transform: translateY(110vh) translateX(var(--wind-offset, 0)) rotateZ(15deg);
+  }
+}
+
+/* Heavy rain splashes */
+.rain-splash {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(150, 180, 220, 0.8), transparent);
+  opacity: var(--weather-opacity);
+  animation: raindropSplash 0.6s ease-out forwards;
+}
+
+@keyframes raindropSplash {
+  0% {
+    width: 8px;
+    height: 8px;
+    opacity: var(--weather-opacity);
+  }
+  100% {
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+  }
+}
+
+/* SNOW EFFECTS */
+.snow-flake {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0.8) 70%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
+  opacity: var(--weather-opacity);
+  animation: snowDrift ease-in-out infinite;
+  filter: blur(0.5px);
+}
+
+@keyframes snowDrift {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotateZ(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(55vh) translateX(var(--wind-offset, 0)) rotateZ(180deg) scale(0.9);
+  }
+  100% {
+    transform: translateY(110vh) translateX(calc(var(--wind-offset, 0) * 1.5)) rotateZ(360deg) scale(0.7);
+  }
+}
+
+/* FOG/MIST EFFECTS */
+.fog-layer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(200, 200, 220, 0.1), transparent 70%);
+  opacity: var(--weather-opacity);
+  animation: fogShift ease-in-out infinite;
+}
+
+@keyframes fogShift {
+  0%, 100% {
+    transform: translateX(-2%) translateY(0);
+  }
+  50% {
+    transform: translateX(2%) translateY(1%);
+  }
+}
+
+/* THUNDER/LIGHTNING EFFECTS */
+.lightning-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 180, 0.8), transparent);
+  opacity: 0;
+  animation: lightningFlash 0.2s ease-out;
+  pointer-events: none;
+}
+
+@keyframes lightningFlash {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  20% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* WIND EFFECTS - Lines that move across screen */
+.wind-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(200, 200, 220, 0.3), transparent);
+  opacity: var(--weather-opacity);
+  animation: windBlow linear infinite;
+}
+
+@keyframes windBlow {
+  0% {
+    transform: translateX(-100%) skewX(20deg);
+  }
+  100% {
+    transform: translateX(100%) skewX(20deg);
+  }
+}
+
+/* LIGHT BULB CONTAINER & EFFECTS */
+.light-bulb-container {
+  position: fixed;
+  top: 60px;
+  right: 30px;
+  z-index: 40;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+}
+
+.light-bulb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(255, 200, 50, 0.6));
+  animation: bulbFloat 3s ease-in-out infinite;
+}
+
+@keyframes bulbFloat {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-15px) translateX(var(--wind-offset, 0));
+  }
+}
+
+.bulb-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 40% 40%, #ffc832 0%, rgba(255, 200, 50, 0.6) 30%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: bulbPulse 2s ease-in-out infinite;
+}
+
+@keyframes bulbPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+}
+
+.bulb-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  transform: translate(-50%, -50%);
+}
+
+/* Light rays emanating from bulb */
+.light-ray {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 200px;
+  transform-origin: 0 0;
+  opacity: 0.15;
+}
+
+.light-ray:nth-child(1) {
+  background: linear-gradient(90deg, rgba(255, 200, 50, 0.8), transparent);
+  transform: translate(-50%, -50%) rotate(0deg);
+  animation: rayRotate 8s linear infinite;
+}
+
+.light-ray:nth-child(2) {
+  background: linear-gradient(90deg, rgba(255, 200, 50, 0.6), transparent);
+  transform: translate(-50%, -50%) rotate(90deg);
+  animation: rayRotate 8s linear infinite 2s;
+}
+
+.light-ray:nth-child(3) {
+  background: linear-gradient(90deg, rgba(255, 200, 50, 0.4), transparent);
+  transform: translate(-50%, -50%) rotate(180deg);
+  animation: rayRotate 8s linear infinite 4s;
+}
+
+.light-ray:nth-child(4) {
+  background: linear-gradient(90deg, rgba(255, 200, 50, 0.2), transparent);
+  transform: translate(-50%, -50%) rotate(270deg);
+  animation: rayRotate 8s linear infinite 6s;
+}
+
+@keyframes rayRotate {
+  0% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0.15;
+  }
+}
+
+/* Page illumination from light bulb */
+@keyframes pageGlow {
+  0%, 100% {
+    filter: brightness(1) drop-shadow(0 0 0px rgba(255, 200, 50, 0));
+  }
+  50% {
+    filter: brightness(1.05) drop-shadow(0 0 20px rgba(255, 200, 50, 0.1));
+  }
+}
+
+/* Apply glow to page when light is active */
+body.weather-active {
+  animation: pageGlow 2s ease-in-out infinite;
+}
+
+/* CLOUD EFFECTS */
+.cloud {
+  position: absolute;
+  background: radial-gradient(ellipse, rgba(200, 200, 220, 0.3), transparent);
+  border-radius: 50%;
+  opacity: var(--weather-opacity);
+  animation: cloudDrift ease-in-out infinite;
+}
+
+@keyframes cloudDrift {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(20px) translateY(-5px);
+  }
+}
+
+/* CLEAR SKY - Subtle glow */
+.clear-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center top, rgba(135, 206, 235, 0.05), transparent);
+  opacity: var(--weather-opacity);
+  animation: sunGlow ease-in-out infinite;
+}
+
+@keyframes sunGlow {
+  0%, 100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* WIND ANIMATION - Page elements sway slightly */
+@keyframes windSway {
+  0%, 100% {
+    transform: skewX(0deg) rotateZ(0deg);
+  }
+  50% {
+    transform: skewX(0.5deg) rotateZ(0.2deg);
+  }
+}
+
+body.high-wind {
+  animation: windSway 2s ease-in-out infinite;
+}
+
+/* Ensure weather effects don't interfere with interactions */
+.weather-fx * {
+  pointer-events: none !important;
+}
+
+/* DARK MODE ADJUSTMENTS */
+[data-theme="light"] .rain-drop {
+  background: linear-gradient(to bottom, rgba(70, 120, 180, 0.7), rgba(70, 120, 180, 0.2));
+  box-shadow: 0 0 3px rgba(70, 120, 180, 0.5);
+}
+
+[data-theme="light"] .lightning-flash {
+  background: radial-gradient(ellipse at center, rgba(255, 255, 200, 0.7), transparent);
+}
+
+[data-theme="light"] .wind-line {
+  background: linear-gradient(to right, transparent, rgba(100, 100, 150, 0.2), transparent);
+}
+
+[data-theme="light"] .fog-layer {
+  background: radial-gradient(ellipse at center, rgba(150, 150, 170, 0.1), transparent 70%);
+}
+
+[data-theme="light"] .cloud {
+  background: radial-gradient(ellipse, rgba(150, 150, 170, 0.25), transparent);
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .weather-fx * {
+    animation: none !important;
+  }
+  
+  .light-bulb,
+  .bulb-glow,
+  body.weather-active,
+  body.high-wind {
+    animation: none !important;
+  }
+}
+
+/* MOBILE ADJUSTMENTS */
+@media (max-width: 768px) {
+  .light-bulb-container {
+    top: 80px;
+    right: 15px;
+    width: 48px;
+    height: 48px;
+  }
+  
+  .weather-fx {
+    z-index: 2;
+  }
+}
