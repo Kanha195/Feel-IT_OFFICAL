@@ -2,38 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="assets/unnamed.png">
+  <link rel="icon" type="image/png" href="assets/unnamed.png">
   <link rel="alternate icon" type="image/png" href="assets/unnamed.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="google-site-verification" content="n-dQpXWAFa2JVXUlFbyvq-kBIQT-aNDraRdjgO57rN0" />
-  <meta name="description" content="Feel It pairs solo travelers with local riders who know Nepal's high roads. Guided motorbike tours across Pokhara, the Kathmandu Valley and Upper Mustang.">
-  <meta name="keywords" content="Nepal motorbike tours, pillion rides Nepal, guided motorcycle tours Kathmandu, Pokhara bike tour, Upper Mustang motorcycle, Feel It Nepal">
-  <meta name="author" content="Feel It Nepal">
-  <meta name="robots" content="index, follow">
+  <meta name="description" content="Photographs from Feel It Nepal's guided motorbike rides — Pokhara, the Kathmandu Valley rim and the Mustang desert crossing.">
   <meta name="theme-color" content="#0f172a">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Feel It — Guided Motorbike Journeys Across Nepal">
-  <meta property="og:description" content="Guided motorbike tours with local riders across Pokhara, Kathmandu Valley and Upper Mustang. Feel the road, not the window.">
-  <meta property="og:image" content="assets/1.png">
-  <meta property="og:locale" content="en_NP">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Feel It — Guided Motorbike Journeys Across Nepal">
-  <meta name="twitter:description" content="Guided motorbike tours with local riders across Nepal.">
-  <title>Feel It — Guided Motorbike Journeys Across Nepal</title>
+  <title>Gallery — Feel It Nepal</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="feelit-preloader.css">
 </head>
 <body>
 
-<!-- Feel It character preloader — Dowie + Snowie -->
-<div class="page-loader" id="pageLoader" role="status" aria-live="polite" aria-label="Loading Feel It Nepal">
+<!-- Dowie + Snowie preloader -->
+<div class="page-loader" id="pageLoader" role="status" aria-live="polite" aria-label="Loading gallery">
   <div class="loader-sky" aria-hidden="true">
     <span class="loader-moon"></span>
     <span class="loader-star loader-star-1"></span>
@@ -44,7 +31,6 @@
     <span class="loader-snow loader-snow-3">❄</span>
     <span class="loader-snow loader-snow-4">•</span>
   </div>
-
   <div class="loader-stage loader-character-stage">
     <div class="loader-route-glow" aria-hidden="true"></div>
     <div class="loader-characters" aria-hidden="true">
@@ -57,372 +43,73 @@
         <span class="loader-character-glow"></span>
       </div>
     </div>
-
     <div class="loader-ground" aria-hidden="true"><span></span></div>
     <div class="loader-copy">
       <div class="loader-word">FEEL IT</div>
       <div class="loader-names"><span>SNOWIE</span><i>×</i><span>DOWIE</span></div>
-      <div class="loader-sub" id="loaderStatus">getting your Nepal adventure ready…</div>
+      <div class="loader-sub" id="loaderStatus">loading the gallery…</div>
     </div>
   </div>
 </div>
 
 <header>
   <div class="wrap nav">
-    <a href="#top" class="brand">
+    <a href="index.html" class="brand">
       <img src="assets/unnamed.png" width="38" height="38" alt="Feel It Nepal logo" class="brand-logo" onerror="this.onerror=null;this.src='assets/unnamed.png'">
       <span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span>
     </a>
     <div class="nav-links">
-      <a href="#tours">Tours</a>
-      <a href="#hiddenGems">Hidden Gems</a>
-      <a href="#routeBuilder">Customize Your Ride</a>
-      <a href="#map">Map</a>
-      <a href="gallery.html">Gallery</a>
-      <a href="#how">How it works</a>
-      <a href="#safety">Safety</a>
-      <a href="#contact">Contact</a>
+      <a href="index.html#tours">Tours</a>
+      <a href="index.html#hiddenGems">Hidden Gems</a>
+      <a href="index.html#map">Map</a>
+      <a href="gallery.html" class="nav-current" aria-current="page">Gallery</a>
+      <a href="index.html#how">How it works</a>
+      <a href="index.html#contact">Contact</a>
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">☀️</button>
       <button class="btn btn-outline" id="authNavBtn" onclick="openAuthModal()">Login / Account</button>
-      <a href="#tours" class="btn btn-primary nav-book-btn">Book Now →</a>
       <button class="menu-btn" id="menuBtn" onclick="toggleMobileMenu()" aria-label="Open menu" title="Menu">☰</button>
     </div>
   </div>
   <nav class="mobile-menu" id="mobileMenu">
-    <a href="#tours" onclick="closeMobileMenu()">Tours</a>
-    <a href="#hiddenGems" onclick="closeMobileMenu()">Hidden Gems</a>
-    <a href="#routeBuilder" onclick="closeMobileMenu()">Customize Your Ride</a>
-    <a href="#map" onclick="closeMobileMenu()">Map</a>
+    <a href="index.html#tours">Tours</a>
+    <a href="index.html#hiddenGems">Hidden Gems</a>
+    <a href="index.html#map">Map</a>
     <a href="gallery.html">Gallery</a>
-    <a href="#how" onclick="closeMobileMenu()">How it works</a>
-    <a href="#safety" onclick="closeMobileMenu()">Safety</a>
-    <a href="#riderReviews" onclick="closeMobileMenu()">Reviews</a>
-    <a href="#pay" onclick="closeMobileMenu()">Payment</a>
-    <a href="#contact" onclick="closeMobileMenu()">Contact</a>
-    <a href="#guides" onclick="closeMobileMenu()">For guides</a>
+    <a href="index.html#how">How it works</a>
+    <a href="index.html#contact">Contact</a>
     <a href="#" onclick="openAuthModal(); closeMobileMenu();">Login / Account</a>
   </nav>
 </header>
 
-<section class="hero" id="top">
-  <div class="hero-media">
-    <!-- Hero background: assets/1.png (from GitHub assets). Logo: assets/unnamed.png -->
-    <img src="assets/1.png" alt="Riders on a mountain road in Nepal" onerror="this.remove()">
-  </div>
-  <div class="hero-overlay"></div>
-  <div class="hero-inner">
-    <div class="hero-tag">Guided bike tours in Nepal</div>
-    <h1>More Than a Ride,<br><span class="hero-accent">It’s a Story</span></h1>
-    <p>Explore breathtaking landscapes, hidden villages and ancient cultures with expert local riders. Your Himalayan adventure starts here.</p>
-    <div class="hero-trust" id="fiHeroTrust">
-      <span>🏍️ Expert Guides</span>
-      <span>🛡️ Safe &amp; Reliable</span>
-      <span>🗺️ Unforgettable Routes</span>
-    </div>
-    <div class="hero-ctas">
-      <a href="#tours" class="btn btn-primary">Explore Tours →</a>
-      <a href="#routeBuilder" class="btn btn-outline hero-watch-btn">Customize Ride</a>
-    </div>
-  </div>
-
-  <div class="hero-weather-card" id="fiWeatherWidget">
-    <div class="hw-top">
-      <span class="hw-loc"><span class="hw-pin">📍</span> <span id="fiWeatherLoc">Kathmandu</span></span>
-      <span class="hw-live">Live Weather</span>
-    </div>
-    <div class="hw-main">
-      <span class="hero-weather-icon" aria-hidden="true">🌦️</span>
-      <div class="hw-temp-block">
-        <span class="hw-temp" id="fiWeatherTemp">—°</span>
-        <span class="hero-weather-text">Checking the weather…</span>
-      </div>
-    </div>
-    <div class="hw-meta">
-      <div><span class="hw-meta-label">Humidity</span><strong id="fiWeatherHum">—</strong></div>
-      <div><span class="hw-meta-label">Wind</span><strong id="fiWeatherWind">—</strong></div>
-      <div><span class="hw-meta-label">Feels like</span><strong id="fiWeatherFeels">—</strong></div>
-    </div>
-  </div>
-</section>
-
-<section id="popular">
+<section class="gallery-hero">
   <div class="wrap">
-    <div class="featured-layout">
-      <div class="featured-main">
-        <div class="section-head section-head-row">
-          <div>
-            <p class="section-eyebrow">Popular tours</p>
-            <h2>Featured Bike Tours</h2>
-          </div>
-          <a href="#tours" class="link-view-all">View All Tours →</a>
-        </div>
-        <div class="popular-strip" id="fiPopularStrip"><div class="empty-state">Loading…</div></div>
-      </div>
-
-      <aside class="customize-card" id="fiCustomizeCard">
-        <h3>⛰️ Customize Your Ride</h3>
-        <p class="cust-sub">Create your perfect Nepal adventure. Choose what’s included — guide &amp; rider stay on.</p>
-        <div class="cust-toggles">
-          <div class="cust-toggle">
-            <label for="featHotel">
-              <span class="cust-ico">🛏️</span>
-              <span><strong>Include Hotel</strong><small>Comfortable stays</small></span>
-            </label>
-            <label class="switch"><input type="checkbox" id="featHotel" checked onchange="syncFeatCustomize()"><span class="slider"></span></label>
-          </div>
-          <div class="cust-toggle">
-            <label for="featFood">
-              <span class="cust-ico">🍽️</span>
-              <span><strong>Include Food</strong><small>Local meals</small></span>
-            </label>
-            <label class="switch"><input type="checkbox" id="featFood" checked onchange="syncFeatCustomize()"><span class="slider"></span></label>
-          </div>
-          <div class="cust-toggle">
-            <label>
-              <span class="cust-ico">🧭</span>
-              <span><strong>Include Guide</strong><small>Always included</small></span>
-            </label>
-            <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
-          </div>
-        </div>
-        <div class="cust-row">
-          <div class="field">
-            <label for="featDays">Trip Duration</label>
-            <select id="featDays">
-              <option value="1">1 Day</option>
-              <option value="3">3 Days</option>
-              <option value="5" selected>5 Days</option>
-              <option value="8">8 Days</option>
-              <option value="10">10 Days</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="featGroup">Group Size</label>
-            <select id="featGroup">
-              <option value="1">1 Person</option>
-              <option value="2" selected>1–2 People</option>
-              <option value="4">3–4 People</option>
-              <option value="6">5–6 People</option>
-            </select>
-          </div>
-        </div>
-        <a class="btn btn-primary" style="width:100%;" href="#routeBuilder" onclick="applyFeatToRouteBuilder()">Get Custom Quote →</a>
-      </aside>
-    </div>
-
-    <div class="trust-strip">
-      <div class="trust-item"><span class="ti-ico">🛡️</span><strong>100% Safe Rides</strong>Well-maintained bikes &amp; support</div>
-      <div class="trust-item"><span class="ti-ico">📍</span><strong>Local Experts</strong>Passionate about Nepal</div>
-      <div class="trust-item"><span class="ti-ico">📅</span><strong>Flexible Itineraries</strong>Your journey, your way</div>
-      <div class="trust-item"><span class="ti-ico">🎧</span><strong>24/7 Support</strong>Always here for you</div>
+    <a href="index.html" class="back-home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back to home
+    </a>
+    <h1>Photo gallery</h1>
+    <p>Photographs from the rides themselves — the passes, the tea stops, and the bikes that got us there.</p>
+    <div class="gallery-toolbar">
+      <div class="filters" id="galleryFilter"></div>
+      <span class="gallery-count" id="galleryCount"></span>
     </div>
   </div>
 </section>
 
-<section id="tours">
+<section class="gallery-section">
   <div class="wrap">
-    <div class="section-head">
-      <h2>Find your route</h2>
-      <p>Every tour is led by a named local rider. Filter by region or open Hidden Gems for short local rides.</p>
-    </div>
-    <div class="filter-bar" id="filters"></div>
-    <div class="grid" id="tourGrid"></div>
+    <div class="gallery-grid" id="photoGalleryGrid"></div>
   </div>
 </section>
 
-<section id="hiddenGems" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <p class="section-eyebrow">Short rides &amp; local secrets</p>
-      <h2>Hidden Gems</h2>
-      <p>Half-day and short routes most visitors never find — tea-house loops, ridge sunsets, village trails. Guide and rider stay fixed; you can add hotel or food if you want.</p>
-    </div>
-    <div class="grid" id="hiddenGemsGrid"><div class="empty-state">Loading hidden gems…</div></div>
-  </div>
-</section>
-
-<section id="map" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Where we ride</h2>
-      <p>Every region and destination managed from the admin panel.</p>
-    </div>
-    <div class="route-search-wrap" style="margin-bottom:14px;">
-      <input type="text" id="tourMapSearchInput" class="route-search-input" placeholder="Search a place — Pokhara, Mustang, Namche Bazaar…" autocomplete="off">
-      <div id="tourMapSearchResults" class="route-search-results"></div>
-    </div>
-    <div id="tourMap"></div>
-  </div>
-</section>
-
-<section id="routeBuilder" style="background:var(--paper);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Customize Your Ride</h2>
-      <p>Search any place in Nepal or click the map to add stops. Guide and rider are always included. Toggle hotel and food yourself — the price updates live.</p>
-    </div>
-
-    <div class="route-search-wrap">
-      <input type="text" id="routeSearchInput" class="route-search-input" placeholder="Search a place in Nepal — Pokhara, Mustang, Namche Bazaar…" autocomplete="off">
-      <div id="routeSearchResults" class="route-search-results"></div>
-    </div>
-
-    <div class="route-builder-grid">
-      <div id="routeBuilderMap"></div>
-
-      <div class="route-side-panel">
-        <div class="route-panel-card">
-          <h3>Your route</h3>
-          <ul id="routeItineraryList" class="route-itinerary"></ul>
-          <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="resetRouteBuilder()">Reset route</button>
-        </div>
-
-        <div class="route-panel-card">
-          <h3>Trip details</h3>
-          <div class="field">
-            <label for="routeDays">Duration (days)</label>
-            <input type="number" id="routeDays" min="1" max="30" value="1" oninput="recalcRouteEstimate()">
-          </div>
-          <div class="field">
-            <label for="routePassengers">Passengers</label>
-            <input type="number" id="routePassengers" min="1" max="10" value="1" oninput="recalcRouteEstimate()">
-          </div>
-          <div class="field">
-            <label for="routeTerrain">Terrain</label>
-            <select id="routeTerrain" onchange="recalcRouteEstimate()">
-              <option value="highway">Highway</option>
-              <option value="offroad">Extreme Off-Road</option>
-            </select>
-          </div>
-          <div class="addon-toggles">
-            <label class="addon-toggle">
-              <input type="checkbox" id="routeIncludeHotel" checked onchange="recalcRouteEstimate()">
-              <span>Include hotel <small>(comfortable stays)</small></span>
-            </label>
-            <label class="addon-toggle">
-              <input type="checkbox" id="routeIncludeFood" checked onchange="recalcRouteEstimate()">
-              <span>Include food <small>(local meals)</small></span>
-            </label>
-            <p class="addon-note">Guide &amp; rider are always included and cannot be removed.</p>
-          </div>
-        </div>
-
-        <div class="route-panel-card route-summary-card">
-          <h3>Estimated price</h3>
-          <div id="routeSummaryBody"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="how" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>How a booking runs</h2>
-      <p>Three stops between deciding and being on the road.</p>
-    </div>
-    <div class="milestones">
-      <div class="milestone"><span class="km">0</span><h3>Pick a route</h3><p>Compare region, distance and what’s included, then check open dates.</p></div>
-      <div class="milestone"><span class="km">1</span><h3>Book &amp; pay</h3><p>Choose Bank or eSewa, scan the QR, and submit your transaction reference.</p></div>
-      <div class="milestone"><span class="km">2</span><h3>Get your rider</h3><p>Our team verifies your payment and assigns a rider — their details appear in My Account once confirmed.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="safety" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Rider Safety &amp; Protocols</h2>
-      <p>Your security on Nepal’s high-altitude and winding terrain is our absolute priority.</p>
-    </div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Certified Local Pilots</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Every companion rider undergoes rigorous background screening, holding extensive documented experience on Himalayan gravel tracks, monsoon mud paths, and high mountain passes.</p>
-      </div>
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Top-Tier Gear Standards</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">DOT/ECE-approved full-face helmets, reinforced abrasion jackets, knee guards, and communication headsets are supplied fresh for every individual journey.</p>
-      </div>
-      <div class="card-body" style="background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);">
-        <h3 style="color:var(--primary);margin-bottom:8px;">Emergency Route Protocols</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Our rides maintain satellite-enabled check-ins for remote passes like Mustang and Manang, backed by localized medical evacuation logistics partners.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="pay" style="background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Two ways to pay</h2>
-      <p>Pick Bank Transfer or eSewa when you check out — you’ll scan the correct QR and enter your transaction reference right there.</p>
-    </div>
-    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:stretch;">
-      <div class="form-card" style="flex:1;min-width:240px;">
-        <h3 style="margin-bottom:10px;">🏦 Bank Transfer</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Pay directly from any mobile banking app to our Laxmi Sunrise savings account. Your bank’s app-generated QR or transfer reference works as your proof of payment.</p>
-      </div>
-      <div class="form-card" style="flex:1;min-width:240px;">
-        <h3 style="margin-bottom:10px;">📱 eSewa</h3>
-        <p style="font-size:14px;color:var(--ink-soft);">Scan &amp; pay instantly using the eSewa app. Your eSewa transaction ID is all our team needs to verify the payment.</p>
-      </div>
-    </div>
-    <div style="margin-top:24px;">
-      <span class="badge" style="display:inline-block;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;">Every payment is manually verified before your rider is assigned</span>
-    </div>
-  </div>
-</section>
-
-<section id="guides">
+<section class="gallery-cta">
   <div class="wrap">
     <div class="guide-banner">
       <div>
-        <h2>Ride these roads for a living?</h2>
-        <p>List your tour, set your own dates and price, and take bookings from travelers before they even land in Nepal.</p>
+        <h2>Want to be in the next one?</h2>
+        <p>Pick a route, and your rider takes the photos while you ride.</p>
       </div>
-      <button class="btn btn-primary" onclick="openGuideForm()">Apply as a guide</button>
-    </div>
-  </div>
-</section>
-
-<section id="riderReviews" style="background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Rider stories</h2>
-      <p>Real reviews, pulled straight from each tour — nothing written by us.</p>
-    </div>
-    <div class="reviews-grid" id="fiReviewsGrid"><div class="empty-state">Loading…</div></div>
-  </div>
-</section>
-
-<section id="contact">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Contact us</h2>
-      <p>Questions before you book? Reach us directly or send a message.</p>
-    </div>
-    <div style="display:flex;gap:40px;flex-wrap:wrap;">
-      <div class="contact-details">
-        <div><strong>Email</strong><a id="contactEmailDisplay" href="#"></a></div>
-        <div><strong>Phone</strong><a id="contactPhoneDisplay" href="#"></a></div>
-        <div><strong>Based in</strong><span id="contactAddressDisplay"></span></div>
-        <div class="contact-socials">
-          <a id="contactWaLink" class="social-btn social-whatsapp" href="#" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.437-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.463 3.488"/></svg>
-            <span>WhatsApp</span>
-          </a>
-          <a class="social-btn social-instagram" href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
-            <span>Instagram</span>
-          </a>
-        </div>
-      </div>
-      <div class="form-card" style="flex:2;min-width:280px;">
-        <h3 style="margin:0 0 14px;font-size:22px;">Leave a message</h3>
-        <div id="contactDynamic"><div class="empty-state">Loading…</div></div>
-      </div>
+      <a class="btn btn-primary" href="index.html#tours">Browse tours</a>
     </div>
   </div>
 </section>
@@ -436,23 +123,22 @@
       </div>
       <p>Guided motorbike journeys across Nepal, run with local riders who know the roads.</p>
       <div class="footer-socials">
-        <a href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" class="social-btn social-instagram" aria-label="Instagram @feelitoffical">
+        <a href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" class="social-btn social-instagram">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
           <span>@feelitoffical</span>
         </a>
-        <a id="footerWaLink" href="https://wa.me/9779825344810" target="_blank" rel="noopener" class="social-btn social-whatsapp" aria-label="WhatsApp">
+        <a href="https://wa.me/9779825344810" target="_blank" rel="noopener" class="social-btn social-whatsapp">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.437-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.463 3.488"/></svg>
           <span>WhatsApp</span>
         </a>
       </div>
     </div>
     <div class="footer-links">
-      <a href="#tours">Tours</a>
-      <a href="#hiddenGems">Hidden Gems</a>
+      <a href="index.html#tours">Tours</a>
+      <a href="index.html#hiddenGems">Hidden Gems</a>
       <a href="gallery.html">Gallery</a>
-      <a href="#safety">Safety</a>
-      <a href="#contact">Contact</a>
-      <a href="#" onclick="openTermsModal(); return false;">Terms &amp; conditions</a>
+      <a href="index.html#safety">Safety</a>
+      <a href="index.html#contact">Contact</a>
       <p class="footer-copy">&copy; 2026 Feel It Nepal</p>
     </div>
   </div>
@@ -461,7 +147,6 @@
 <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true">
   <div class="modal" id="modalContent"></div>
 </div>
-
 <div id="fiSiteFx" aria-hidden="true"></div>
 <div id="fiWindLamp" aria-hidden="true" title="Wind lamp"></div>
 <div id="toast-container"></div>
@@ -470,16 +155,13 @@
   <a class="float-wa" href="https://wa.me/9779825344810" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.437-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.463 3.488"/></svg>
   </a>
-  <a class="float-ig" href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" aria-label="Instagram @feelitoffical">
+  <a class="float-ig" href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" aria-label="Instagram">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
   </a>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="script.js"></script>
 <script src="feelit-extras.js"></script>
-<script src="feelit-hero.js"></script>
 <script src="feelit-preloader.js"></script>
 </body>
 </html>
