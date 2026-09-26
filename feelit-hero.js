@@ -99,16 +99,122 @@
   function fillPopular() {
     const host = $('fiPopularStrip');
     if (!host || typeof tours === 'undefined') return;
-    if (!tours.length) { host.innerHTML = '<div class="empty-state">Add tours in Admin to see them here.</div>'; return; }
-    host.innerHTML = tours.slice(0, 8).map(t => `
-      <div class="popular-card" onclick="openTour('${esc(t.id)}')">
-        ${t.imageUrl ? imgTag(t.imageUrl, t.title, '') : `<div class="popular-card-body" style="padding-top:40px;text-align:center;color:var(--ink-soft);">📷</div>`}
+    if (!tours.length) { host.innerHTML = '<div class="empty-state">Tours will appear here once published.</div>'; return; }
+    // Admin-controlled featured list (Operations → Featured)
+    let list = [];
+    try {
+      const ids = (typeof loadFeaturedIds === 'function') ? loadFeaturedIds() : [];
+      if (ids && ids.length) {
+        const map = Object.fromEntries(tours.map(t => [String(t.id), t]));
+        list = ids.map(id => map[String(id)]).filter(Boolean);
+      }
+    } catch (e) {}
+    if (!list.length) list = tours.filter(t => !t.hidden_gem).slice(0, 8);
+    if (!list.length) list = tours.slice(0, 8);
+    const cardHtml = (t, clone) => {
+      const zoom = Math.min(200, Math.max(100, Number(t.image_zoom) || 100));
+      const pos = esc(t.image_position || 'center');
+      const img = t.imageUrl
+        ? imgTag(t.imageUrl, t.title, '', `style="object-fit:cover;object-position:${pos};transform:scale(${zoom/100});transform-origin:${pos};width:100%;height:100%;"`)
+        : `<div class="popular-card-body" style="padding-top:40px;text-align:center;color:var(--ink-soft);">📷</div>`;
+      return `
+      <div class="popular-card${clone ? ' popular-card-clone' : ''}" data-tour-id="${esc(t.id)}" onclick="openTour('${esc(t.id)}')">
+        ${img}
         <div class="popular-card-body">
           <div class="popular-card-region">${esc(t.region)}</div>
           <h4 class="popular-card-title">${esc(t.title)}</h4>
           <div class="popular-card-price">${fmtNPR(t.price)} / person</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    };
+    // Triple the set so we can jump between copies for a seamless infinite loop
+    if (list.length <= 1) {
+      host.innerHTML = list.map(t => cardHtml(t, false)).join('');
+    } else {
+      host.innerHTML =
+        list.map(t => cardHtml(t, true)).join('') +
+        list.map(t => cardHtml(t, false)).join('') +
+        list.map(t => cardHtml(t, true)).join('');
+    }
+    bindPopularNav(list.length);
+  }
+
+  function bindPopularNav(itemCount){
+    const strip = $('fiPopularStrip');
+    const left = $('fiPopLeft');
+    const right = $('fiPopRight');
+    if(!strip || !left || !right) return;
+
+    // Always enable arrows for infinite loop (unless 0–1 cards)
+    left.disabled = false;
+    right.disabled = false;
+    if (!itemCount || itemCount <= 1) {
+      left.disabled = true;
+      right.disabled = true;
+      return;
+    }
+
+    let locked = false; // prevent jump thrashing mid-scroll
+
+    const oneSetWidth = () => {
+      // Middle copy starts after the first clone set
+      const cards = strip.querySelectorAll('.popular-card');
+      if (cards.length < itemCount * 2) return strip.scrollWidth / 3;
+      const first = cards[0];
+      const mid = cards[itemCount];
+      return mid.offsetLeft - first.offsetLeft;
+    };
+
+    const jumpToMiddle = () => {
+      const w = oneSetWidth();
+      if (w > 0) strip.scrollLeft = w;
+    };
+
+    const step = () => {
+      const card = strip.querySelector('.popular-card');
+      if (card) return Math.round(card.offsetWidth + 14); // card + gap
+      return Math.max(200, Math.floor(strip.clientWidth * 0.7));
+    };
+
+    // Keep the viewport inside the middle copy; when it drifts into a clone set, snap without animation
+    const maintainLoop = () => {
+      if (locked) return;
+      const w = oneSetWidth();
+      if (w <= 0) return;
+      const x = strip.scrollLeft;
+      // Near the end of the third set → jump back one set
+      if (x >= w * 2 - 8) {
+        locked = true;
+        strip.scrollLeft = x - w;
+        requestAnimationFrame(() => { locked = false; });
+      }
+      // Near the start of the first set → jump forward one set
+      else if (x <= 8) {
+        locked = true;
+        strip.scrollLeft = x + w;
+        requestAnimationFrame(() => { locked = false; });
+      }
+    };
+
+    left.onclick = (e) => {
+      e.preventDefault();
+      strip.scrollBy({ left: -step(), behavior: 'smooth' });
+    };
+    right.onclick = (e) => {
+      e.preventDefault();
+      strip.scrollBy({ left: step(), behavior: 'smooth' });
+    };
+
+    strip.addEventListener('scroll', maintainLoop, { passive: true });
+    // After layout: start on the middle copy so both directions loop
+    requestAnimationFrame(() => {
+      jumpToMiddle();
+      setTimeout(jumpToMiddle, 80);
+      setTimeout(jumpToMiddle, 250);
+    });
+    window.addEventListener('resize', () => {
+      jumpToMiddle();
+    });
   }
 
   // tours load asynchronously; both of the above need it, so chain onto renderTours
