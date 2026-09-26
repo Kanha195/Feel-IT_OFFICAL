@@ -147,14 +147,75 @@
 
 <section id="popular">
   <div class="wrap">
-    <div class="section-head section-head-row">
-      <div>
-        <p class="section-eyebrow">Popular tours</p>
-        <h2>Featured Bike Tours</h2>
+    <div class="featured-layout">
+      <div class="featured-main">
+        <div class="section-head section-head-row">
+          <div>
+            <p class="section-eyebrow">Popular tours</p>
+            <h2>Featured Bike Tours</h2>
+          </div>
+          <a href="#tours" class="link-view-all">View All Tours →</a>
+        </div>
+        <div class="popular-strip" id="fiPopularStrip"><div class="empty-state">Loading…</div></div>
       </div>
-      <a href="#tours" class="link-view-all">View All Tours →</a>
+
+      <aside class="customize-card" id="fiCustomizeCard">
+        <h3>⛰️ Customize Your Ride</h3>
+        <p class="cust-sub">Create your perfect Nepal adventure. Choose what’s included — guide &amp; rider stay on.</p>
+        <div class="cust-toggles">
+          <div class="cust-toggle">
+            <label for="featHotel">
+              <span class="cust-ico">🛏️</span>
+              <span><strong>Include Hotel</strong><small>Comfortable stays</small></span>
+            </label>
+            <label class="switch"><input type="checkbox" id="featHotel" checked onchange="syncFeatCustomize()"><span class="slider"></span></label>
+          </div>
+          <div class="cust-toggle">
+            <label for="featFood">
+              <span class="cust-ico">🍽️</span>
+              <span><strong>Include Food</strong><small>Local meals</small></span>
+            </label>
+            <label class="switch"><input type="checkbox" id="featFood" checked onchange="syncFeatCustomize()"><span class="slider"></span></label>
+          </div>
+          <div class="cust-toggle">
+            <label>
+              <span class="cust-ico">🧭</span>
+              <span><strong>Include Guide</strong><small>Always included</small></span>
+            </label>
+            <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
+          </div>
+        </div>
+        <div class="cust-row">
+          <div class="field">
+            <label for="featDays">Trip Duration</label>
+            <select id="featDays">
+              <option value="1">1 Day</option>
+              <option value="3">3 Days</option>
+              <option value="5" selected>5 Days</option>
+              <option value="8">8 Days</option>
+              <option value="10">10 Days</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="featGroup">Group Size</label>
+            <select id="featGroup">
+              <option value="1">1 Person</option>
+              <option value="2" selected>1–2 People</option>
+              <option value="4">3–4 People</option>
+              <option value="6">5–6 People</option>
+            </select>
+          </div>
+        </div>
+        <a class="btn btn-primary" style="width:100%;" href="#routeBuilder" onclick="applyFeatToRouteBuilder()">Get Custom Quote →</a>
+      </aside>
     </div>
-    <div class="popular-strip" id="fiPopularStrip"><div class="empty-state">Loading…</div></div>
+
+    <div class="trust-strip">
+      <div class="trust-item"><span class="ti-ico">🛡️</span><strong>100% Safe Rides</strong>Well-maintained bikes &amp; support</div>
+      <div class="trust-item"><span class="ti-ico">📍</span><strong>Local Experts</strong>Passionate about Nepal</div>
+      <div class="trust-item"><span class="ti-ico">📅</span><strong>Flexible Itineraries</strong>Your journey, your way</div>
+      <div class="trust-item"><span class="ti-ico">🎧</span><strong>24/7 Support</strong>Always here for you</div>
+    </div>
   </div>
 </section>
 
