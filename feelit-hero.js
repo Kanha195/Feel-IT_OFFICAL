@@ -41,7 +41,15 @@
         if ($('fiWeatherFeels')) $('fiWeatherFeels').textContent = (c.apparent_temperature != null ? Math.round(c.apparent_temperature) + '°' : '—');
         // Expose wind for the floating lamp in feelit-extras
         window.__fiWindKmh = Number(c.wind_speed_10m) || 0;
-        window.dispatchEvent(new CustomEvent('fi-weather-updated', { detail: { wind: window.__fiWindKmh, code } }));
+        // Map code to kind for lamp + FX consistency
+        let kind = null;
+        if([95,96,99].includes(code)) kind = 'thunder';
+        else if([71,73,75,77,85,86].includes(code)) kind = 'snow';
+        else if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) kind = 'rain';
+        else if([45,48].includes(code)) kind = 'fog';
+        else if(code <= 1) kind = 'clear';
+        window.__fiWeatherKind = kind;
+        window.dispatchEvent(new CustomEvent('fi-weather-updated', { detail: { wind: window.__fiWindKmh, code, kind } }));
         return;
       }
     } catch (e) { /* fall through */ }
@@ -142,4 +150,23 @@
     }
   }
   fillReviews();
+
+
+  window.syncFeatCustomize = function(){
+    // mirror into route builder checkboxes when present
+    const h = document.getElementById('featHotel');
+    const f = document.getElementById('featFood');
+    const rh = document.getElementById('routeIncludeHotel');
+    const rf = document.getElementById('routeIncludeFood');
+    if(h && rh) rh.checked = h.checked;
+    if(f && rf) rf.checked = f.checked;
+    if(typeof recalcRouteEstimate === 'function') recalcRouteEstimate();
+  };
+  window.applyFeatToRouteBuilder = function(){
+    const days = document.getElementById('featDays')?.value;
+    const group = document.getElementById('featGroup')?.value;
+    if(days && document.getElementById('routeDays')) document.getElementById('routeDays').value = days;
+    if(group && document.getElementById('routePassengers')) document.getElementById('routePassengers').value = group;
+    window.syncFeatCustomize();
+  };
 })();
