@@ -171,7 +171,7 @@
   }
 
   function suggestDays() {
-    const high = (window.__FI_ROUTE_STOPS || []).some(s => zoneOf(s)?.high);
+    const high = routeStops.some(s => zoneOf(s)?.high);
     // ~6 riding hours a day, there and back, plus one acclimatisation day above ~3,000 m
     return Math.max(1, Math.ceil((last.durationMin * 2 / 60) / 6) + (high ? 1 : 0));
   }
@@ -183,8 +183,7 @@
     const host = $('routeSummaryBody');
     if (!host) return;
     const days = Math.max(1, parseInt($('routeDays').value, 10) || 1), start = $('routeStart').value, zones = [];
-    const stops = window.__FI_ROUTE_STOPS || [];
-    const rows = stops.map(s => {
+    const rows = routeStops.map(s => {
       const z = zoneOf(s);
       if (z && !zones.includes(z)) zones.push(z);
       return `<li>${esc(s.name)} — ${z ? esc(z.name) : 'open road, no special permit'}</li>`;
@@ -204,7 +203,7 @@
     const my = ++tok;
     ensureStartField();
     await _recalc();
-    if (my !== tok || !(window.__FI_ROUTE_STOPS || []).length || !last) return;
+    if (my !== tok || !routeStops.length || !last) return;
     const need = suggestDays(), inp = $('routeDays');
     if (!daysTouched && inp && +inp.value !== need) {
       inp.value = need;
