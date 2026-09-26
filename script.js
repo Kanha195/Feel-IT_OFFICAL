@@ -10,12 +10,27 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const CONTACT_INFO = {
   email: 'feelitofficial@gmail.com',
   phone: '+977-9808747221',
-  whatsapp: '9779712065778', // 977 + 9825344810, no leading 0 or +, as wa.me expects
+  whatsapp: '9779825344810', // 977 + 9825344810, no leading 0 or +, as wa.me expects
   address: 'Basundhara, Kathmandu, Nepal',
   instagram: 'feelitoffical' // used exactly as given — double check this matches your real handle
 };
 
+/* ---------------- Google Drive image handling ----------------
+   WHY THIS CHANGED: the old code turned Drive share links into
+   `https://drive.google.com/uc?export=view&id=…`. Google no longer serves
+   that endpoint to <img> tags — it answers with a redirect to an HTML
+   "virus scan / sign in" page, so the browser gets HTML where it wanted a
+   JPEG and renders a broken image. That is exactly why nothing you
+   uploaded ever appeared on the site.
 
+   `https://drive.google.com/thumbnail?id=…&sz=w1600` DOES still serve a
+   real image to <img> tags, so that's what we use now.
+
+   Everything is normalised at DISPLAY time (not just when saving), so the
+   photos already sitting in your Supabase table with the old broken URL
+   start working the moment you upload this file — you don't have to
+   re-add a single one.
+--------------------------------------------------------------------- */
 
 // Pull the file ID out of any Drive URL shape people actually paste.
 function driveFileId(url){
@@ -309,7 +324,19 @@ const seedTours = [
   { id:'t3', title:'Upper Mustang Desert Crossing', region:'Mustang', duration:'5 days', price:48000,
     guide:'Tenzin Lama', guide_phone:'+977-9834567890', bio:'Born in Lo Manthang, led Mustang crossings for 9 seasons.',
     desc:'High desert crossing past Chörtens and canyon roads.',
-    includes:['Off-road bike','Restricted permit','Lodging','Fuel'], lat: 28.7819, lng: 83.7380, imageUrl: '' }
+    includes:['Off-road bike','Restricted permit','Lodging','Fuel'], lat: 28.7819, lng: 83.7380, imageUrl: '' },
+  { id:'hg1', title:'Nagarkot Sunset Ridge', region:'Kathmandu', duration:'Half day', price:2500,
+    guide:'Sunita Tamang', guide_phone:'+977-9823456789', bio:'Valley-rim specialist.',
+    desc:'Short afternoon climb to Nagarkot for sunset over the Himalaya — tea stop included.',
+    includes:['Bike','Helmet','Fuel','Local guide'], lat: 27.7154, lng: 85.5205, imageUrl: '', hidden_gem: true },
+  { id:'hg2', title:'Phewa Lakeside Loop', region:'Pokhara', duration:'3 hours', price:1800,
+    guide:'Bikash Gurung', guide_phone:'+977-9812345678', bio:'11 years on Pokhara hills.',
+    desc:'Easy lakeside and village lanes around Phewa — perfect first ride in Nepal.',
+    includes:['Bike','Helmet','Fuel'], lat: 28.2096, lng: 83.9856, imageUrl: '', hidden_gem: true },
+  { id:'hg3', title:'Chobar Gorge Tea Run', region:'Kathmandu', duration:'Half day', price:2200,
+    guide:'Sunita Tamang', guide_phone:'+977-9823456789', bio:'Valley-rim specialist.',
+    desc:'Quick run to Chobar gorge and a hillside tea house — short, scenic, local.',
+    includes:['Bike','Helmet','Fuel','Tea stop'], lat: 27.6588, lng: 85.2917, imageUrl: '', hidden_gem: true }
 ];
 
 let tours = [];
@@ -363,7 +390,8 @@ function normalizeTour(t){
     ...t,
     guide_phone: t.guide_phone || t.guidePhone || '',
     imageUrl: t.image_url || t.imageUrl || '',
-    includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : [])
+    includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : []),
+    hidden_gem: !!(t.hidden_gem || t.is_hidden_gem || t.hiddenGem)
   };
 }
 
@@ -440,20 +468,54 @@ function setFilter(r){
 }
 
 function renderTours(){
-  const list = activeFilter==='All' ? tours : tours.filter(t=>t.region===activeFilter);
+  // Main grid: exclude pure hidden gems unless filter is All and we still show everything
+  const base = activeFilter==='All' ? tours : tours.filter(t=>t.region===activeFilter);
+  const list = base.filter(t => !t.hidden_gem || activeFilter !== 'All' ? true : !t.hidden_gem);
+  // Simpler: main grid shows non-gem tours; gems have their own section
+  const mainList = (activeFilter==='All' ? tours : tours.filter(t=>t.region===activeFilter)).filter(t => !t.hidden_gem);
   const el = document.getElementById('tourGrid');
   if(!el) return;
-  if(list.length===0){ el.innerHTML = '<div class="empty-state">No tours in this region yet.</div>'; return; }
+  if(mainList.length===0){ el.innerHTML = '<div class="empty-state">No tours in this region yet.</div>'; return; }
 
-  // The photo is now a real <img> rather than a CSS background, so a Drive
-  // link that needs a fallback URL can actually retry (backgrounds can't).
-  el.innerHTML = list.map(t=>{
+  el.innerHTML = mainList.map(t=>{
     const art = t.imageUrl
       ? imgTag(t.imageUrl, t.title, 'card-photo')
       : `<svg class="card-art-placeholder" width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#22d3ee"/></svg>`;
     return `
       <article class="card">
         <div class="card-art" data-img-holder>${art}<span class="card-art-fallback">Photo coming soon</span></div>
+        <div class="card-body">
+          <div class="card-region">${esc(t.region)}</div>
+          <h3 class="card-title">${esc(t.title)}</h3>
+          ${ratingBadge(t.id)}
+          <div class="card-meta"><span>${esc(t.duration)}</span><span>Guide: ${esc(t.guide)}</span></div>
+          <div class="card-price">${fmtNPR(t.price)} <small>/ person</small></div>
+          <button class="btn btn-primary" onclick="openTour('${esc(t.id)}')">View &amp; book</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+  renderHiddenGems();
+}
+
+function renderHiddenGems(){
+  const el = document.getElementById('hiddenGemsGrid');
+  if(!el) return;
+  const gems = tours.filter(t => t.hidden_gem);
+  if(!gems.length){
+    el.innerHTML = '<div class="empty-state">No hidden gems listed yet — add short rides in Admin and mark them as Hidden Gem.</div>';
+    return;
+  }
+  el.innerHTML = gems.map(t=>{
+    const art = t.imageUrl
+      ? imgTag(t.imageUrl, t.title, 'card-photo')
+      : `<svg class="card-art-placeholder" width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#fbbf24"/></svg>`;
+    return `
+      <article class="card">
+        <div class="card-art" data-img-holder>
+          <span class="gem-badge">Hidden Gem</span>
+          ${art}<span class="card-art-fallback">Photo coming soon</span>
+        </div>
         <div class="card-body">
           <div class="card-region">${esc(t.region)}</div>
           <h3 class="card-title">${esc(t.title)}</h3>
@@ -484,8 +546,9 @@ const ROUTE_START = { name: 'Basundhara, Kathmandu', lat: 27.7410, lng: 85.3360 
 //   roadFactor       → used ONLY when the live routing service can't
 //                      return a real road distance (see getRoadDistanceKm)
 const ROUTE_PRICING = {
-  highway: { perKm: 40, perDayPerPerson: 4500, roadFactor: 1.3 },
-  offroad: { perKm: 60, perDayPerPerson: 6000, roadFactor: 1.55 }
+  // Tuned down — guide/rider always included; hotel & food are optional add-ons
+  highway: { perKm: 25, perDayPerPerson: 2800, roadFactor: 1.3, hotelPerDay: 1200, foodPerDay: 800 },
+  offroad: { perKm: 40, perDayPerPerson: 3800, roadFactor: 1.55, hotelPerDay: 1500, foodPerDay: 1000 }
 };
 
 let routeMap = null;
@@ -712,7 +775,13 @@ async function recalcRouteEstimate(){
   }
 
   const rates = ROUTE_PRICING[terrain];
-  const total = Math.round((rates.perKm * km + rates.perDayPerPerson * days) * passengers / 100) * 100;
+  const includeHotel = document.getElementById('routeIncludeHotel')?.checked !== false;
+  const includeFood = document.getElementById('routeIncludeFood')?.checked !== false;
+  const hotelCost = includeHotel ? (rates.hotelPerDay || 0) * days * passengers : 0;
+  const foodCost = includeFood ? (rates.foodPerDay || 0) * days * passengers : 0;
+  // perDayPerPerson covers guide/rider + margin (always on)
+  const base = (rates.perKm * km + rates.perDayPerPerson * days) * passengers;
+  const total = Math.round((base + hotelCost + foodCost) / 100) * 100;
   const hours = Math.floor(durationMin / 60), mins = Math.round(durationMin % 60);
   const timeLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   const dest = routeStops[routeStops.length - 1];
@@ -729,6 +798,7 @@ async function recalcRouteEstimate(){
       <span class="weather-chip" data-weather-pending data-weather-lat="${dest.lat}" data-weather-lng="${dest.lng}">Loading weather…</span>
     </div>
     <div class="route-total"><span>Estimated package price</span><strong>${fmtNPR(total)}</strong></div>
+    <p class="route-summary-note">Includes guide &amp; rider${includeHotel ? ' · hotel' : ''}${includeFood ? ' · food' : ''}. Guide/rider cannot be removed.</p>
     ${source === 'estimate' ? `<p class="route-summary-note">Road-routing service unavailable for this route — showing a straight-line estimate and rough time instead. Actual distance/time on Nepal's mountain roads may be higher.</p>` : ''}
     <p class="route-summary-note">This is an automatic estimate. We confirm the exact price once our team reviews the route.</p>
     <button type="button" class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="requestRouteQuote(${km.toFixed(0)}, ${days}, ${passengers}, '${terrain}', ${total})">Enquire about this route on WhatsApp</button>
@@ -930,9 +1000,20 @@ function openTour(id){
     </div>
     <div class="field">
       <label for="tourTravelers">Travelers</label>
-      <input type="number" id="tourTravelers" value="1" min="1" max="6">
+      <input type="number" id="tourTravelers" value="1" min="1" max="6" oninput="updateTourBookingPrice('${esc(t.id)}')">
     </div>
-    <div class="card-price" style="margin-bottom:18px;">${fmtNPR(t.price)} <small>/ person</small></div>
+    <div class="addon-toggles">
+      <label class="addon-toggle">
+        <input type="checkbox" id="bookIncludeHotel" checked onchange="updateTourBookingPrice('${esc(t.id)}')">
+        <span>Include hotel <small>(comfortable stays · optional)</small></span>
+      </label>
+      <label class="addon-toggle">
+        <input type="checkbox" id="bookIncludeFood" checked onchange="updateTourBookingPrice('${esc(t.id)}')">
+        <span>Include food <small>(local meals · optional)</small></span>
+      </label>
+      <p class="addon-note">Guide &amp; rider are always included and cannot be removed.</p>
+    </div>
+    <div class="card-price" style="margin-bottom:18px;" id="tourBookingPrice">${fmtNPR(t.price)} <small>/ person base</small></div>
     <button class="btn btn-primary" style="width:100%;" onclick="goToCheckout('${esc(t.id)}')">Continue to payment</button>
     <div id="tourReviews-${esc(t.id)}" class="review-block">${inlineLoader('Loading reviews')}</div>
   `;
@@ -1033,6 +1114,45 @@ async function submitReview(tourId){
   renderTourReviews(tourId);
 }
 
+// Days estimated from duration string ("3 days", "Half day", "Full day")
+function estimateTourDays(duration){
+  const d = String(duration || '').toLowerCase();
+  if(d.includes('half') || d.includes('hour')) return 1;
+  const m = d.match(/(\d+)/);
+  if(m) return Math.max(1, parseInt(m[1], 10));
+  return 1;
+}
+
+function calcTourAddons(t, travelers){
+  const days = estimateTourDays(t.duration);
+  const terrain = (String(t.region || '').toLowerCase().includes('mustang') || String(t.duration||'').toLowerCase().includes('off')) ? 'offroad' : 'highway';
+  const rates = ROUTE_PRICING[terrain] || ROUTE_PRICING.highway;
+  const includeHotel = document.getElementById('bookIncludeHotel')?.checked === true;
+  const includeFood = document.getElementById('bookIncludeFood')?.checked === true;
+  const hotel = includeHotel ? (rates.hotelPerDay || 0) * days * travelers : 0;
+  const food = includeFood ? (rates.foodPerDay || 0) * days * travelers : 0;
+  const base = (Number(t.price) || 0) * travelers;
+  return {
+    days, includeHotel, includeFood,
+    hotel, food,
+    base,
+    total: Math.round((base + hotel + food) / 100) * 100
+  };
+}
+
+function updateTourBookingPrice(id){
+  const t = tours.find(x => x.id === id);
+  if(!t) return;
+  const travelers = Math.max(1, parseInt(document.getElementById('tourTravelers')?.value || '1', 10));
+  const c = calcTourAddons(t, travelers);
+  const el = document.getElementById('tourBookingPrice');
+  if(!el) return;
+  const bits = [];
+  if(c.includeHotel) bits.push('hotel');
+  if(c.includeFood) bits.push('food');
+  el.innerHTML = `${fmtNPR(c.total)} <small>total · ${travelers} traveler(s)${bits.length ? ' · ' + bits.join(' + ') : ' · guide only'}</small>`;
+}
+
 async function goToCheckout(id){
   const t = tours.find(x=>x.id===id);
   if(!t) return;
@@ -1043,13 +1163,16 @@ async function goToCheckout(id){
   if(!travelers || travelers < 1 || travelers > 6){ showToast('Travelers must be between 1 and 6.', 'error'); return; }
 
   const sessionUser = await checkActiveAuthUser();
+  const c = calcTourAddons(t, travelers);
 
   pendingBooking = {
     tourId: t.id,
     title: t.title,
     date,
     travelers,
-    total: t.price * travelers,
+    total: c.total,
+    includeHotel: c.includeHotel,
+    includeFood: c.includeFood,
     sessionUser,
     paymentMethod: null
   };
@@ -1282,11 +1405,12 @@ async function handleStandardLogin(){
   // Check Secure Hash for Admin
   if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && hashedPass === ADMIN_PASS_HASH){
     restoreBtn();
-    // Marks this browser tab as an authenticated admin for THIS session only
-    // (cleared on tab close). admin.html reads this flag before showing any
-    // financial data — see the security note at the bottom of this file for
-    // exactly how much protection that actually is (not much, on its own).
-    sessionStorage.setItem('feelit_admin_session', String(Date.now()));
+    // Session flag: timestamp + random token. admin.html checks age (< 4h).
+    // This is still client-side only — see SECURITY note. Real protection needs
+    // Supabase Auth + RLS that denies anon writes.
+    const token = crypto.getRandomValues(new Uint8Array(16));
+    const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
+    sessionStorage.setItem('feelit_admin_session', JSON.stringify({ t: Date.now(), k: tokenHex }));
     window.location.href = 'admin.html';
     return;
   }
@@ -1537,9 +1661,9 @@ async function submitGuideApp(){
 
 /* ---------------- Professional Admin Panel ---------------- */
 async function renderAdminPanel(tab){
-  const tabs = ['bookings', 'tours', 'addTour', 'users', 'messages', 'reviews', 'photos', 'ad'];
+  const tabs = ['bookings', 'tours', 'addTour', 'costs', 'users', 'messages', 'reviews', 'photos', 'ad'];
   const labels = {
-    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour',
+    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', costs:'⛽ Costs',
     users:'👥 Customers', messages:'💬 Messages', reviews:'⭐ Reviews',
     photos:'🖼️ Gallery', ad:'📢 Popup Ad'
   };
@@ -1602,6 +1726,10 @@ async function renderAdminPanel(tab){
             <div class="field"><label for="adm-lat-${esc(t.id)}">Map latitude</label><input id="adm-lat-${esc(t.id)}" value="${esc(t.lat ?? '')}" placeholder="28.2096"></div>
             <div class="field"><label for="adm-lng-${esc(t.id)}">Map longitude</label><input id="adm-lng-${esc(t.id)}" value="${esc(t.lng ?? '')}" placeholder="83.9856"></div>
           </div>
+          <label class="addon-toggle" style="margin-bottom:12px;">
+            <input type="checkbox" id="adm-gem-${esc(t.id)}" ${t.hidden_gem ? 'checked' : ''}>
+            <span>Hidden Gem <small>(short ride — shows in Hidden Gems section)</small></span>
+          </label>
           <div class="admin-actions">
             <button class="btn btn-primary" id="adm-save-${esc(t.id)}" onclick="saveTourEdits('${esc(t.id)}')">Save changes</button>
             <button class="btn btn-danger" onclick="deleteTour('${esc(t.id)}')">Delete route</button>
@@ -1655,6 +1783,10 @@ async function renderAdminPanel(tab){
           <div class="field"><label for="newLng">Map longitude</label><input id="newLng" placeholder="83.7380"></div>
         </div>
         <div id="newTourLocateStatus" class="form-note"></div>
+        <label class="addon-toggle" style="margin:12px 0;">
+          <input type="checkbox" id="newHiddenGem">
+          <span>Hidden Gem <small>(short ride — appears under Hidden Gems)</small></span>
+        </label>
         <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="publishTourBtn" onclick="saveNewTour()">Publish route</button>
       </div>
     `;
@@ -1706,16 +1838,23 @@ async function renderAdminPanel(tab){
     body = await buildAdminAdBody();
   }
 
+  if(tab === 'costs'){
+    body = buildAdminCostsBody();
+  }
+
   const modalEl = document.getElementById('modalContent');
   modalEl.classList.add('modal-admin');
   modalEl.innerHTML = `
     <button class="modal-close" onclick="closeOverlay()">&times;</button>
     <div class="admin-header">
       <div class="admin-header-top">
-        <h2>Admin Control Panel</h2>
-        <a class="btn btn-outline btn-sm" href="admin.html">💰 Financial Control</a>
+        <h2>Operations Panel</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a class="btn btn-outline btn-sm" href="admin.html">💰 Financial Control</a>
+          <button class="btn btn-danger btn-sm" type="button" onclick="adminLogout()">Logout</button>
+        </div>
       </div>
-      <p class="sub" style="margin:0;">Verify payments, assign riders, and manage routes — nothing reaches a customer until you confirm it here.</p>
+      <p class="sub" style="margin:0;">Verify payments, assign riders, set costs, and manage routes — nothing reaches a customer until you confirm it here.</p>
     </div>
     ${statsBar}
     <div class="filters admin-tabs">
@@ -2183,7 +2322,8 @@ async function saveTourEdits(id){
 
   if(!title || !region){ showToast('Title and region can\'t be empty.', 'error'); return; }
 
-  const patch = { title, region, duration, price, guide, guide_phone: guidePhone, desc };
+  const hiddenGem = !!document.getElementById(`adm-gem-${id}`)?.checked;
+  const patch = { title, region, duration, price, guide, guide_phone: guidePhone, desc, hidden_gem: hiddenGem };
   patch.image_url = imgSrc(image);          // stored already-converted so it works everywhere
   if(!Number.isNaN(lat)) patch.lat = lat;
   if(!Number.isNaN(lng)) patch.lng = lng;
@@ -2234,8 +2374,7 @@ async function saveNewTour(){
     desc: desc || 'Guided motorcycle journey.',
     includes: includesRaw ? includesRaw.split(',').map(s => s.trim()).filter(Boolean) : ['Bike', 'Helmet', 'Fuel', 'Guide'],
     image_url: imgSrc(image),
-    // Previously every new route was hard-coded to Pokhara's coordinates, so
-    // adding a Mustang route dropped its map pin on the wrong side of Nepal.
+    hidden_gem: !!document.getElementById('newHiddenGem')?.checked,
     lat: Number.isNaN(lat) ? 28.2096 : lat,
     lng: Number.isNaN(lng) ? 83.9856 : lng
   };
@@ -2474,6 +2613,132 @@ function inlineLoader(label = 'Loading'){
   </div>`;
 }
 
+/* ---------------- Admin costs (fuel / hotel / driver) + session security ----------------
+   Costs persist in localStorage so Financial Control and the route estimator
+   can read them without a server. When site_settings exists in Supabase, we
+   also try to sync — failure is non-fatal.
+------------------------------------------------------------------------ */
+const DEFAULT_COSTS = {
+  fuelPerLiter: 200,
+  kmPerLiter: 25,
+  riderHighway: 2500,
+  riderOffroad: 3500,
+  hotelPerDay: 1200,
+  foodPerDay: 800,
+  splitFounder: 40,
+  splitPartnerB: 20,
+  splitPartnerC: 20,
+  splitReserve: 20
+};
+
+function loadCosts(){
+  try {
+    const raw = localStorage.getItem('feelit_costs');
+    if(raw) return { ...DEFAULT_COSTS, ...JSON.parse(raw) };
+  } catch(e){}
+  return { ...DEFAULT_COSTS };
+}
+
+function saveCostsToStorage(c){
+  try { localStorage.setItem('feelit_costs', JSON.stringify(c)); } catch(e){}
+  // Push into live ROUTE_PRICING so custom-route quotes update immediately
+  if(typeof ROUTE_PRICING !== 'undefined'){
+    ROUTE_PRICING.highway.hotelPerDay = c.hotelPerDay;
+    ROUTE_PRICING.highway.foodPerDay = c.foodPerDay;
+    ROUTE_PRICING.offroad.hotelPerDay = Math.round(c.hotelPerDay * 1.25);
+    ROUTE_PRICING.offroad.foodPerDay = Math.round(c.foodPerDay * 1.25);
+  }
+  window.dispatchEvent(new CustomEvent('feelit-costs-updated', { detail: c }));
+}
+
+function buildAdminCostsBody(){
+  const c = loadCosts();
+  return `
+    <div class="form-card" style="max-width:100%;">
+      <h3>Operating costs</h3>
+      <p class="form-note" style="margin-top:-4px;">These numbers feed the Financial Control calculator and optional hotel/food add-ons on bookings. Shareholder split must total 100%.</p>
+      <div class="row-2">
+        <div class="field"><label>Petrol price (NPR / liter)</label><input type="number" id="costFuel" min="0" value="${c.fuelPerLiter}"></div>
+        <div class="field"><label>Bike efficiency (km / liter)</label><input type="number" id="costKmL" min="1" value="${c.kmPerLiter}"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Rider wage — highway (NPR / day)</label><input type="number" id="costRiderHwy" min="0" value="${c.riderHighway}"></div>
+        <div class="field"><label>Rider wage — off-road (NPR / day)</label><input type="number" id="costRiderOff" min="0" value="${c.riderOffroad}"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Hotel cost (NPR / day / person)</label><input type="number" id="costHotel" min="0" value="${c.hotelPerDay}"></div>
+        <div class="field"><label>Food cost (NPR / day / person)</label><input type="number" id="costFood" min="0" value="${c.foodPerDay}"></div>
+      </div>
+      <h3 style="margin-top:20px;">Shareholder split (%)</h3>
+      <div class="row-2">
+        <div class="field"><label>Lead Founder</label><input type="number" id="costSplitA" min="0" max="100" value="${c.splitFounder}" oninput="syncSplitHint()"></div>
+        <div class="field"><label>Partner B</label><input type="number" id="costSplitB" min="0" max="100" value="${c.splitPartnerB}" oninput="syncSplitHint()"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Partner C</label><input type="number" id="costSplitC" min="0" max="100" value="${c.splitPartnerC}" oninput="syncSplitHint()"></div>
+        <div class="field"><label>Company Reserve</label><input type="number" id="costSplitR" min="0" max="100" value="${c.splitReserve}" oninput="syncSplitHint()"></div>
+      </div>
+      <p class="form-note" id="costSplitHint">Total: ${c.splitFounder+c.splitPartnerB+c.splitPartnerC+c.splitReserve}%</p>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;" id="saveCostsBtn" onclick="saveAdminCosts()">Save costs</button>
+    </div>
+  `;
+}
+
+function syncSplitHint(){
+  const a = +document.getElementById('costSplitA')?.value || 0;
+  const b = +document.getElementById('costSplitB')?.value || 0;
+  const c = +document.getElementById('costSplitC')?.value || 0;
+  const r = +document.getElementById('costSplitR')?.value || 0;
+  const el = document.getElementById('costSplitHint');
+  if(el) el.textContent = `Total: ${a+b+c+r}%` + (a+b+c+r !== 100 ? ' — should equal 100%' : ' ✓');
+}
+
+function saveAdminCosts(){
+  const c = {
+    fuelPerLiter: +document.getElementById('costFuel').value || 0,
+    kmPerLiter: +document.getElementById('costKmL').value || 25,
+    riderHighway: +document.getElementById('costRiderHwy').value || 0,
+    riderOffroad: +document.getElementById('costRiderOff').value || 0,
+    hotelPerDay: +document.getElementById('costHotel').value || 0,
+    foodPerDay: +document.getElementById('costFood').value || 0,
+    splitFounder: +document.getElementById('costSplitA').value || 0,
+    splitPartnerB: +document.getElementById('costSplitB').value || 0,
+    splitPartnerC: +document.getElementById('costSplitC').value || 0,
+    splitReserve: +document.getElementById('costSplitR').value || 0
+  };
+  const total = c.splitFounder + c.splitPartnerB + c.splitPartnerC + c.splitReserve;
+  if(total !== 100){ showToast('Shareholder split must total exactly 100%.', 'error'); return; }
+  saveCostsToStorage(c);
+  showToast('Costs saved. Financial Control and booking add-ons will use these numbers.', 'success');
+}
+
+function isValidAdminSession(){
+  try {
+    const raw = sessionStorage.getItem('feelit_admin_session');
+    if(!raw) return false;
+    // Legacy: plain timestamp string
+    if(/^\d+$/.test(raw)){
+      const age = Date.now() - Number(raw);
+      return age >= 0 && age < 4 * 60 * 60 * 1000;
+    }
+    const obj = JSON.parse(raw);
+    if(!obj || !obj.t) return false;
+    const age = Date.now() - Number(obj.t);
+    return age >= 0 && age < 4 * 60 * 60 * 1000;
+  } catch(e){ return false; }
+}
+
+function adminLogout(){
+  sessionStorage.removeItem('feelit_admin_session');
+  closeOverlay();
+  showToast('Admin logged out.', 'success');
+  // If on admin.html, bounce home
+  if(/admin\\.html$/i.test(location.pathname)) window.location.href = 'index.html';
+}
+
+// Apply stored costs on load so hotel/food rates match admin settings
+saveCostsToStorage(loadCosts());
+
 /* ---------------- Initialization ---------------- */
 window.addEventListener('DOMContentLoaded', async () => {
   loadTheme();
@@ -2493,7 +2758,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // straight to the bookings/tours panel instead of landing on the
   // homepage. Only happens if this tab actually has the admin session
   // flag (i.e. it isn't just someone guessing the URL).
-  if(new URLSearchParams(location.search).get('admin') === '1' && sessionStorage.getItem('feelit_admin_session')){
+  if(new URLSearchParams(location.search).get('admin') === '1' && isValidAdminSession()){
     history.replaceState(null, '', location.pathname); // drop ?admin=1 so a refresh doesn't force-reopen it
     renderAdminPanel('bookings');
   }
