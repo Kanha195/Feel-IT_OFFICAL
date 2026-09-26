@@ -1,12 +1,107 @@
-/* Feel It hero layer —  no rebuild; fills existing weather/trust/popular widgets. */
-(() => {
+
   'use strict';
-  const $=id=>document.getElementById(id);
-  const esc=s=>window.esc?window.esc(s):String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function weatherText(code){const m={0:['☀️','Clear'],1:['🌤️','Mainly clear'],2:['⛅','Partly cloudy'],3:['☁️','Overcast'],45:['🌫️','Fog'],48:['🌫️','Freezing fog'],51:['🌦️','Drizzle'],53:['🌦️','Drizzle'],55:['🌧️','Drizzle'],61:['🌧️','Rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],71:['❄️','Snow'],73:['❄️','Snow'],75:['❄️','Heavy snow'],80:['🌦️','Showers'],81:['🌧️','Showers'],82:['⛈️','Heavy showers'],95:['⛈️','Thunderstorm'],96:['⛈️','Thunderstorm'],99:['⛈️','Thunderstorm']};return m[code]||['🌦️','Weather']}
-  async function fillWeather(){const w=$('fiWeatherWidget');if(!w)return;let lat=27.741,lng=85.336;if(navigator.geolocation){try{const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000,maximumAge:1200000}));lat=p.coords.latitude;lng=p.coords.longitude}catch{}}try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m`);const d=await r.json(),[i,t]=weatherText(d.current.weather_code);w.querySelector('.hero-weather-icon').textContent=i;w.querySelector('.hero-weather-text').textContent=`${t} · ${Math.round(d.current.temperature_2m)}°C · wind ${Math.round(d.current.wind_speed_10m)} km/h`;}catch{w.querySelector('.hero-weather-text').textContent='Weather unavailable — route conditions checked before departure';}}
-  function fillTrust(){const e=$('fiHeroTrust');if(!e)return;e.innerHTML='<span>✓ Local riders</span><span>✓ Payment checked</span><span>✓ WhatsApp support</span>';}
-  function fillPopular(){const h=$('fiPopularStrip');if(!h||!Array.isArray(window.tours))return;h.innerHTML=window.tours.filter(t=>!t.coming_soon).slice(0,8).map(t=>`<article class="popular-card" onclick="openTour('${esc(t.id)}')"><div class="popular-card-body"><div class="popular-card-region">${esc(t.region)}</div><div class="popular-card-title">${esc(t.title)}</div><div class="popular-card-price">${window.fmtNPR?window.fmtNPR(t.price):'Price on request'}</div></div></article>`).join('');}
-  function boot(){fillTrust();fillWeather();fillPopular();setTimeout(fillPopular,1200)}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  const $ = id => document.getElementById(id);
+
+  /* ---- Weather chip: reuses feelit-extras.js's location + script.js's
+     existing fetchWeatherFor()/weatherIcon()/weatherLabel() — no new API code. */
+  const HQ_LAT = 27.7410, HQ_LNG = 85.3360;
+  async function fillWeatherChip() {
+    const el = $('fiWeatherWidget');
+    if (!el || typeof fetchWeatherFor !== 'function') return;
+    const timeout = new Promise(res => setTimeout(() => res(null), 6500));
+    const loc = window.fiGetLocation ? await Promise.race([window.fiGetLocation(), timeout]) : null;
+    const { lat, lng } = loc || { lat: HQ_LAT, lng: HQ_LNG };
+    const text = await fetchWeatherFor(lat, lng);
+    el.querySelector('.hero-weather-text').textContent =
+      (text ? text.replace(/^\S+\s/, '') : "Weather's unavailable right now") + (loc ? ' — your location' : ' — Kathmandu');
+    const iconMatch = text && text.match(/^\S+/);
+    if (iconMatch) el.querySelector('.hero-weather-icon').textContent = iconMatch[0];
+  }
+  fillWeatherChip();
+
+  /* ---- Trust badges: real, non-numeric-fabricated claims only. Tour count
+     is the actual length of your live `tours` array. ---- */
+  function fillTrust() {
+    const el = $('fiHeroTrust');
+    if (!el || typeof tours === 'undefined') return;
+    el.innerHTML = [
+      `🏍️ ${tours.length} guided route${tours.length === 1 ? '' : 's'}`,
+      '🪖 Certified local riders',
+      '🛡️ Every payment manually verified',
+      '📡 24/7 WhatsApp support'
+    ].map(t => `<span>${t}</span>`).join('');
+  }
+
+  /* ---- "Plan your ride": populates the region dropdown from real tour data,
+     and on submit reuses script.js's own setFilter() + scrolls to #tours. ---- */
+  let regionsFilled = false;
+  function fillRegions() {
+    const sel = $('fiPlanRegion');
+    if (!sel || regionsFilled || typeof tours === 'undefined' || !tours.length) return;
+    const regions = [...new Set(tours.map(t => t.region).filter(Boolean))].sort();
+    sel.insertAdjacentHTML('beforeend', regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join(''));
+    regionsFilled = true;
+  }
+  $('fiPlanGo')?.addEventListener('click', () => {
+    const region = $('fiPlanRegion').value;
+    if (typeof setFilter === 'function') setFilter(region);
+    document.getElementById('tours')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  /* ---- Popular routes strip: the first few tours from your real data,
+     same photos/prices/links as the main grid — nothing invented. ---- */
+  function fillPopular() {
+    const host = $('fiPopularStrip');
+    if (!host || typeof tours === 'undefined') return;
+    if (!tours.length) { host.innerHTML = '<div class="empty-state">Add tours in Admin to see them here.</div>'; return; }
+    host.innerHTML = tours.slice(0, 8).map(t => `
+      <div class="popular-card" onclick="openTour('${esc(t.id)}')">
+        ${t.imageUrl ? imgTag(t.imageUrl, t.title, '') : `<div class="popular-card-body" style="padding-top:40px;text-align:center;color:var(--ink-soft);">📷</div>`}
+        <div class="popular-card-body">
+          <div class="popular-card-region">${esc(t.region)}</div>
+          <h4 class="popular-card-title">${esc(t.title)}</h4>
+          <div class="popular-card-price">${fmtNPR(t.price)} / person</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // tours load asynchronously; both of the above need it, so chain onto renderTours
+  // (already wrapped once by feelit-upgrade.js — this just adds one more link).
+  const _renderTours = window.renderTours;
+  window.renderTours = function () {
+    _renderTours();
+    fillTrust();
+    fillRegions();
+    fillPopular();
+  };
+
+  /* ---- Homepage "Rider stories": a real aggregate across all tours, pulled
+     straight from the `reviews` table. If it's empty (or the table doesn't
+     exist yet — see feelit-reviews.sql), this says so honestly instead of
+     showing anything invented. ---- */
+  async function fillReviews() {
+    const host = $('fiReviewsGrid');
+    if (!host) return;
+    try {
+      const { data, error } = await supabaseClient
+        .from('reviews').select('*').order('created_at', { ascending: false }).limit(6);
+      if (error) throw error;
+      if (!data || !data.length) {
+        host.innerHTML = '<div class="empty-state">No reviews yet — they\'ll appear here the moment a rider posts one on their tour page.</div>';
+        return;
+      }
+      host.innerHTML = data.map(r => {
+        const t = (typeof tours !== 'undefined' ? tours.find(x => x.id === r.tour_id) : null);
+        return `<div class="review-card">
+          <span class="stars">${typeof starsHtml === 'function' ? starsHtml(r.rating) : '★'.repeat(r.rating)}</span>
+          <p>“${esc(r.body)}”</p>
+          <div class="review-who">${esc(r.name || 'Traveler')}</div>
+          ${t ? `<div class="review-tour">${esc(t.title)}</div>` : ''}
+        </div>`;
+      }).join('');
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state">Reviews aren\'t set up yet — run feelit-reviews.sql in Supabase, then reload.</div>';
+    }
+  }
+  fillReviews();
 })();
