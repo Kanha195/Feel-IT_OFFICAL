@@ -391,7 +391,9 @@ function normalizeTour(t){
     guide_phone: t.guide_phone || t.guidePhone || '',
     imageUrl: t.image_url || t.imageUrl || '',
     includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : []),
-    hidden_gem: !!(t.hidden_gem || t.is_hidden_gem || t.hiddenGem)
+    hidden_gem: !!(t.hidden_gem || t.is_hidden_gem || t.hiddenGem),
+    image_position: t.image_position || t.imagePosition || 'center',
+    image_zoom: Number(t.image_zoom || t.imageZoom || 100)
   };
 }
 
@@ -406,6 +408,11 @@ async function loadTours(){
   } catch (e) {
     tours = seedTours.map(normalizeTour);
   }
+  // Apply admin crop overrides from this browser
+  try {
+    const cropMap = JSON.parse(localStorage.getItem('feelit_tour_crop') || '{}');
+    tours = tours.map(t => cropMap[t.id] ? { ...t, ...cropMap[t.id] } : t);
+  } catch(e){}
   await loadReviewStats();
   renderFilters();
   renderTours();
@@ -478,12 +485,14 @@ function renderTours(){
   if(mainList.length===0){ el.innerHTML = '<div class="empty-state">No tours in this region yet.</div>'; return; }
 
   el.innerHTML = mainList.map(t=>{
+    const zoom = Math.min(200, Math.max(100, Number(t.image_zoom) || 100));
+    const pos = esc(t.image_position || 'center');
     const art = t.imageUrl
-      ? imgTag(t.imageUrl, t.title, 'card-photo')
+      ? imgTag(t.imageUrl, t.title, 'card-photo', `style="object-fit:cover;object-position:${pos};transform:scale(${zoom/100});transform-origin:${pos};width:100%;height:100%;"`)
       : `<svg class="card-art-placeholder" width="70" height="46" viewBox="0 0 70 46" fill="none"><path d="M0 40 L18 12 L28 26 L40 4 L58 34 L70 22 L70 40 Z" fill="#22d3ee"/></svg>`;
     return `
       <article class="card">
-        <div class="card-art" data-img-holder>${art}<span class="card-art-fallback">Photo coming soon</span></div>
+        <div class="card-art" data-img-holder style="overflow:hidden;">${art}<span class="card-art-fallback">Photo coming soon</span></div>
         <div class="card-body">
           <div class="card-region">${esc(t.region)}</div>
           <h3 class="card-title">${esc(t.title)}</h3>
@@ -1607,7 +1616,8 @@ async function sendCustomerMessage(email, name, inputId, btnId, context){
 // Small floating WhatsApp button, present on every page — the fastest
 // path for a traveler with a quick question before they book.
 function initFloatingWhatsApp(){
-  if(document.getElementById('waFloatBtn')) return;
+  // Prefer the explicit float-socials (WA + IG) in the HTML — avoid a second WA that covers IG on mobile
+  if(document.querySelector('.float-socials') || document.getElementById('waFloatBtn')) return;
   const a = document.createElement('a');
   a.id = 'waFloatBtn';
   a.className = 'wa-float-btn';
@@ -1661,9 +1671,9 @@ async function submitGuideApp(){
 
 /* ---------------- Professional Admin Panel ---------------- */
 async function renderAdminPanel(tab){
-  const tabs = ['bookings', 'tours', 'addTour', 'costs', 'users', 'messages', 'reviews', 'photos', 'ad'];
+  const tabs = ['bookings', 'tours', 'addTour', 'costs', 'weather', 'users', 'messages', 'reviews', 'photos', 'ad'];
   const labels = {
-    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', costs:'⛽ Costs',
+    bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', costs:'⛽ Costs', weather:'🌦️ Weather FX',
     users:'👥 Customers', messages:'💬 Messages', reviews:'⭐ Reviews',
     photos:'🖼️ Gallery', ad:'📢 Popup Ad'
   };
@@ -1721,6 +1731,20 @@ async function renderAdminPanel(tab){
               <button class="btn btn-outline" type="button" onclick="previewImageLink('adm-image-${esc(t.id)}','adm-preview-${esc(t.id)}')">Preview</button>
             </div>
             <div class="img-preview" id="adm-preview-${esc(t.id)}"></div>
+            <div class="row-2" style="margin-top:8px;">
+              <div class="field"><label for="adm-imgpos-${esc(t.id)}">Photo crop position</label>
+                <select id="adm-imgpos-${esc(t.id)}">
+                  <option value="center" ${(t.image_position||'center')==='center'?'selected':''}>Center</option>
+                  <option value="top" ${t.image_position==='top'?'selected':''}>Top</option>
+                  <option value="bottom" ${t.image_position==='bottom'?'selected':''}>Bottom</option>
+                  <option value="left" ${t.image_position==='left'?'selected':''}>Left</option>
+                  <option value="right" ${t.image_position==='right'?'selected':''}>Right</option>
+                </select>
+              </div>
+              <div class="field"><label for="adm-imgzoom-${esc(t.id)}">Photo zoom %</label>
+                <input type="number" id="adm-imgzoom-${esc(t.id)}" min="100" max="200" value="${esc(t.image_zoom || 100)}" placeholder="100">
+              </div>
+            </div>
           </div>
           <div class="row-2">
             <div class="field"><label for="adm-lat-${esc(t.id)}">Map latitude</label><input id="adm-lat-${esc(t.id)}" value="${esc(t.lat ?? '')}" placeholder="28.2096"></div>
@@ -1840,6 +1864,10 @@ async function renderAdminPanel(tab){
 
   if(tab === 'costs'){
     body = buildAdminCostsBody();
+  }
+
+  if(tab === 'weather'){
+    body = buildAdminWeatherBody();
   }
 
   const modalEl = document.getElementById('modalContent');
@@ -2323,8 +2351,16 @@ async function saveTourEdits(id){
   if(!title || !region){ showToast('Title and region can\'t be empty.', 'error'); return; }
 
   const hiddenGem = !!document.getElementById(`adm-gem-${id}`)?.checked;
+  const image_position = val(`adm-imgpos-${id}`) || 'center';
+  const image_zoom = Math.min(200, Math.max(100, parseInt(val(`adm-imgzoom-${id}`), 10) || 100));
+  // Crop meta stored locally so missing Supabase columns never break Save
+  try {
+    const cropMap = JSON.parse(localStorage.getItem('feelit_tour_crop') || '{}');
+    cropMap[id] = { image_position, image_zoom };
+    localStorage.setItem('feelit_tour_crop', JSON.stringify(cropMap));
+  } catch(e){}
   const patch = { title, region, duration, price, guide, guide_phone: guidePhone, desc, hidden_gem: hiddenGem };
-  patch.image_url = imgSrc(image);          // stored already-converted so it works everywhere
+  patch.image_url = imgSrc(image);
   if(!Number.isNaN(lat)) patch.lat = lat;
   if(!Number.isNaN(lng)) patch.lng = lng;
 
@@ -2651,6 +2687,77 @@ function saveCostsToStorage(c){
   window.dispatchEvent(new CustomEvent('feelit-costs-updated', { detail: c }));
 }
 
+
+function buildAdminWeatherBody(){
+  const cur = window.__fiWeatherKind || 'none';
+  return `
+    <div class="form-card" style="max-width:100%;">
+      <h3>Weather &amp; light-bulb FX</h3>
+      <p class="form-note" style="margin-top:-4px;">Preview what visitors see. Effects use live location weather by default. The floating light bulb only appears in dark conditions (rain, thunder, fog, or night).</p>
+      <p class="form-note">Current kind: <strong id="admWxCur">${esc(cur)}</strong></p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;">
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx('clear')">☀️ Clear</button>
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx('rain')">🌧️ Rain</button>
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx('snow')">❄️ Snow</button>
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx('fog')">🌫️ Fog</button>
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx('thunder')">⛈️ Thunder</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <button type="button" class="btn btn-primary" onclick="adminForceLamp(true)">💡 Force light bulb ON</button>
+        <button type="button" class="btn btn-outline" onclick="adminForceLamp(false)">Light bulb OFF</button>
+        <button type="button" class="btn btn-outline" onclick="adminPreviewFx(null)">Reset to live weather</button>
+        <button type="button" class="btn btn-danger" onclick="typeof feelitFx!=='undefined'&&feelitFx.off()">Disable all FX</button>
+        <button type="button" class="btn btn-outline" onclick="typeof feelitFx!=='undefined'&&feelitFx.on()">Enable FX</button>
+      </div>
+      <p class="form-note">Tip: open the site with <code>?fx=rain</code> (or snow / fog / thunder / clear) to force a preview without admin.</p>
+      <div class="field" style="margin-top:16px;">
+        <label>Hero background image URL (Google Drive or direct)</label>
+        <input id="admHeroBg" placeholder="assets/1.png or https://drive.google.com/…" value="">
+        <button type="button" class="btn btn-primary" style="margin-top:8px;" onclick="adminSaveHeroBg()">Apply hero background</button>
+        <p class="form-note">Saves to this browser and updates the hero image immediately. For permanent change, keep the file as <code>assets/1.png</code> in GitHub.</p>
+      </div>
+    </div>
+  `;
+}
+function adminPreviewFx(kind){
+  if(typeof feelitFx === 'undefined'){ showToast('Weather FX script not loaded on this page.', 'error'); return; }
+  if(kind == null){
+    feelitFx.on();
+    // clear forced URL param behavior by reloading live
+    if(window.location.search.includes('fx=')){
+      history.replaceState(null,'', location.pathname);
+    }
+    location.reload();
+    return;
+  }
+  feelitFx.preview(kind);
+  // dark kinds should show lamp
+  adminForceLamp(['rain','thunder','fog'].includes(kind));
+  const el = document.getElementById('admWxCur');
+  if(el) el.textContent = kind;
+  showToast('Preview: ' + kind, 'success');
+}
+function adminForceLamp(on){
+  const lamp = document.getElementById('fiWindLamp');
+  if(!lamp){ showToast('Light bulb layer not on this page.', 'error'); return; }
+  lamp.classList.toggle('fi-lamp-on', !!on);
+  showToast(on ? 'Light bulb ON' : 'Light bulb OFF', 'success');
+}
+function adminSaveHeroBg(){
+  const url = (document.getElementById('admHeroBg')?.value || '').trim();
+  if(!url){ showToast('Paste an image URL first.', 'error'); return; }
+  const src = (typeof imgSrc === 'function') ? imgSrc(url) : url;
+  try { localStorage.setItem('feelit_hero_bg', src); } catch(e){}
+  const img = document.querySelector('.hero-media img');
+  if(img){ img.src = src; img.style.display = ''; }
+  else {
+    const media = document.querySelector('.hero-media');
+    if(media) media.innerHTML = `<img src="${src.replace(/"/g,'')}" alt="Hero">`;
+  }
+  showToast('Hero background updated for this browser.', 'success');
+}
+
+
 function buildAdminCostsBody(){
   const c = loadCosts();
   return `
@@ -2742,6 +2849,14 @@ saveCostsToStorage(loadCosts());
 /* ---------------- Initialization ---------------- */
 window.addEventListener('DOMContentLoaded', async () => {
   loadTheme();
+  // Apply admin-saved hero background if any
+  try {
+    const hb = localStorage.getItem('feelit_hero_bg');
+    if(hb){
+      const img = document.querySelector('.hero-media img');
+      if(img) img.src = hb;
+    }
+  } catch(e){}
   initContactDisplay();
   initFloatingWhatsApp();
   initEmailJS();
