@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Basic CSP: reduces XSS risk; adjust if a CDN breaks -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.googletagmanager.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; font-src https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' https://*.supabase.co https://api.open-meteo.com https://*.openstreetmap.org https://nominatim.openstreetmap.org https://router.project-osrm.org https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <link rel="icon" type="image/svg+xml" href="assets/unnamed.png">
   <link rel="alternate icon" type="image/png" href="assets/unnamed.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,12 +18,18 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Feel It — Guided Motorbike Journeys Across Nepal">
   <meta property="og:description" content="Guided motorbike tours with local riders across Pokhara, Kathmandu Valley and Upper Mustang. Feel the road, not the window.">
-  <meta property="og:image" content="assets/1.png">
+  <meta property="og:image" content="https://kanha195.github.io/Feel-IT_OFFICAL/assets/1.png">
+  <meta property="og:url" content="https://kanha195.github.io/Feel-IT_OFFICAL/">
+  <meta property="og:site_name" content="Feel It Nepal">
   <meta property="og:locale" content="en_NP">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Feel It — Guided Motorbike Journeys Across Nepal">
   <meta name="twitter:description" content="Guided motorbike tours with local riders across Nepal.">
-  <title>Feel It — Guided Motorbike Journeys Across Nepal</title>
+  <meta name="twitter:image" content="https://kanha195.github.io/Feel-IT_OFFICAL/assets/1.png">
+  <link rel="canonical" href="https://kanha195.github.io/Feel-IT_OFFICAL/">
+  <link rel="icon" href="assets/unnamed.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/unnamed.png">
+  <title>Feel It — Guided Motorbike Tours in Nepal | Local Riders</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -480,6 +490,15 @@
   <a class="float-ig" href="https://www.instagram.com/feelitoffical/" target="_blank" rel="noopener" aria-label="Instagram @feelitoffical">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069M12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0m0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881"/></svg>
   </a>
+</div>
+
+<!-- Cookie consent -->
+<div id="cookieBanner" class="cookie-banner" role="dialog" aria-label="Cookie consent" hidden>
+  <p>We use essential cookies for login &amp; theme. Analytics only if you accept. <a href="privacy.html">Privacy policy</a></p>
+  <div class="cookie-actions">
+    <button type="button" class="btn btn-outline btn-sm" id="cookieReject">Essential only</button>
+    <button type="button" class="btn btn-primary btn-sm" id="cookieAccept">Accept all</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>

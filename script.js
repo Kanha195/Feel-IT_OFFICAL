@@ -98,8 +98,16 @@ function imgTag(rawUrl, alt, cls, extra = ''){
 // login was silently broken. This one is verified to match.)
 // NOTE: this is still a client-side check only — see the security note at
 // the bottom of this file before relying on it for anything real.
-const ADMIN_EMAIL = 'admin@feelit.com';
+/* STAFF ACCESS
+   Prefer a real Supabase Auth user (Authentication → Users).
+   Put that email below. Client-side hash is ONLY a convenience lock and
+   is NOT secret — anyone can read script.js. Real protection = RLS SQL. */
+const STAFF_EMAILS = ['admin@feelit.com', 'feelitofficial@gmail.com'];
+const ADMIN_EMAIL = STAFF_EMAILS[0];
+// Legacy hash gate (change password by regenerating SHA-256). Still public in source.
 const ADMIN_PASS_HASH = '1bc57fec7b82137e1cfeefed41c9a9f5ded5e69de2a397151c504e139bffd324';
+const ADMIN_LOGIN_MAX_TRIES = 5;
+
 
 // Payment methods customers can pay with. QR images live in /assets.
 // These are only ever shown once a date + traveler count has been chosen,
@@ -313,23 +321,23 @@ async function sbWrite(promise, failMessage){
 }
 
 const seedTours = [
-  { id:'t1', title:'Sarangkot Sunrise Ridge', region:'Pokhara', duration:'Half day', price:3500,
+  { id:'t1', title:'Sarangkot Sunrise Ridge', region:'Pokhara', duration:'Half day', price:5500, price_local:3500,
     guide:'Bikash Gurung', guide_phone:'+977-9812345678', bio:'11 years riding the Pokhara hills, fluent English.',
     desc:'A dawn climb out of Pokhara to the Sarangkot ridgeline for a sunrise over the Annapurna range.',
     includes:['125cc bike','Helmet & jacket','Fuel','Local guide'], lat: 28.2439, lng: 83.9486, imageUrl: '' },
-  { id:'t2', title:'Kathmandu Valley Rim Loop', region:'Kathmandu', duration:'Full day', price:6500,
+  { id:'t2', title:'Kathmandu Valley Rim Loop', region:'Kathmandu', duration:'Full day', price:9500, price_local:6500,
     guide:'Sunita Tamang', guide_phone:'+977-9823456789', bio:'Grew up riding the valley rim roads, runs a small 4-bike outfit.',
     desc:'A full loop around the ridges ringing Kathmandu, stopping at Nagarkot and tea houses.',
     includes:['150cc bike','Full gear set','Fuel & permits','Lunch stop'], lat: 27.7172, lng: 85.3240, imageUrl: '' },
-  { id:'t3', title:'Upper Mustang Desert Crossing', region:'Mustang', duration:'5 days', price:48000,
+  { id:'t3', title:'Upper Mustang Desert Crossing', region:'Mustang', duration:'5 days', price:72000, price_local:48000,
     guide:'Tenzin Lama', guide_phone:'+977-9834567890', bio:'Born in Lo Manthang, led Mustang crossings for 9 seasons.',
     desc:'High desert crossing past Chörtens and canyon roads.',
     includes:['Off-road bike','Restricted permit','Lodging','Fuel'], lat: 28.7819, lng: 83.7380, imageUrl: '' },
-  { id:'hg1', title:'Nagarkot Sunset Ridge', region:'Kathmandu', duration:'Half day', price:2500,
+  { id:'hg1', title:'Nagarkot Sunset Ridge', region:'Kathmandu', duration:'Half day', price:4000, price_local:2500,
     guide:'Sunita Tamang', guide_phone:'+977-9823456789', bio:'Valley-rim specialist.',
     desc:'Short afternoon climb to Nagarkot for sunset over the Himalaya — tea stop included.',
     includes:['Bike','Helmet','Fuel','Local guide'], lat: 27.7154, lng: 85.5205, imageUrl: '', hidden_gem: true },
-  { id:'hg2', title:'Phewa Lakeside Loop', region:'Pokhara', duration:'3 hours', price:1800,
+  { id:'hg2', title:'Phewa Lakeside Loop', region:'Pokhara', duration:'3 hours', price:3000, price_local:1800,
     guide:'Bikash Gurung', guide_phone:'+977-9812345678', bio:'11 years on Pokhara hills.',
     desc:'Easy lakeside and village lanes around Phewa — perfect first ride in Nepal.',
     includes:['Bike','Helmet','Fuel'], lat: 28.2096, lng: 83.9856, imageUrl: '', hidden_gem: true },
@@ -393,7 +401,10 @@ function normalizeTour(t){
     includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : []),
     hidden_gem: !!(t.hidden_gem || t.is_hidden_gem || t.hiddenGem),
     image_position: t.image_position || t.imagePosition || 'center',
-    image_zoom: Number(t.image_zoom || t.imageZoom || 100)
+    image_zoom: Number(t.image_zoom || t.imageZoom || 100),
+    // Dual pricing: foreigner (default price) + local (Nepal residents)
+    price: Number(t.price) || 0,
+    price_local: Number(t.price_local != null ? t.price_local : Math.round((Number(t.price) || 0) * 0.7)) || 0
   };
 }
 
@@ -498,7 +509,10 @@ function renderTours(){
           <h3 class="card-title">${esc(t.title)}</h3>
           ${ratingBadge(t.id)}
           <div class="card-meta"><span>${esc(t.duration)}</span><span>Guide: ${esc(t.guide)}</span></div>
-          <div class="card-price">${fmtNPR(t.price)} <small>/ person</small></div>
+          <div class="card-price dual-price">
+            <span class="price-foreign">${fmtNPR(t.price)} <small>foreigner</small></span>
+            <span class="price-local">${fmtNPR(t.price_local)} <small>local</small></span>
+          </div>
           <button class="btn btn-primary" onclick="openTour('${esc(t.id)}')">View &amp; book</button>
         </div>
       </article>
@@ -532,7 +546,10 @@ function renderHiddenGems(){
           <h3 class="card-title">${esc(t.title)}</h3>
           ${ratingBadge(t.id)}
           <div class="card-meta"><span>${esc(t.duration)}</span><span>Guide: ${esc(t.guide)}</span></div>
-          <div class="card-price">${fmtNPR(t.price)} <small>/ person</small></div>
+          <div class="card-price dual-price">
+            <span class="price-foreign">${fmtNPR(t.price)} <small>foreigner</small></span>
+            <span class="price-local">${fmtNPR(t.price_local)} <small>local</small></span>
+          </div>
           <button class="btn btn-primary" onclick="openTour('${esc(t.id)}')">View &amp; book</button>
         </div>
       </article>
@@ -1024,7 +1041,14 @@ function openTour(id){
       </label>
       <p class="addon-note">Guide &amp; rider are always included and cannot be removed.</p>
     </div>
-    <div class="card-price" style="margin-bottom:18px;" id="tourBookingPrice">${fmtNPR(t.price)} <small>/ person base</small></div>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="bookGuestType">Price type</label>
+      <select id="bookGuestType" onchange="updateTourBookingPrice('${esc(t.id)}')">
+        <option value="foreigner">Foreign visitor — ${fmtNPR(t.price)} / person</option>
+        <option value="local">Nepal resident (local) — ${fmtNPR(t.price_local)} / person</option>
+      </select>
+    </div>
+    <div class="card-price" style="margin-bottom:18px;" id="tourBookingPrice">${fmtNPR(t.price)} <small>/ person · foreigner</small></div>
     <button class="btn btn-primary" style="width:100%;" onclick="goToCheckout('${esc(t.id)}')">Continue to payment</button>
     <div id="tourReviews-${esc(t.id)}" class="review-block">${inlineLoader('Loading reviews')}</div>
   `;
@@ -1140,11 +1164,15 @@ function calcTourAddons(t, travelers){
   const rates = ROUTE_PRICING[terrain] || ROUTE_PRICING.highway;
   const includeHotel = document.getElementById('bookIncludeHotel')?.checked === true;
   const includeFood = document.getElementById('bookIncludeFood')?.checked === true;
+  const guestType = document.getElementById('bookGuestType')?.value || 'foreigner';
+  const unit = guestType === 'local'
+    ? (Number(t.price_local) || Math.round((Number(t.price)||0)*0.7) || 0)
+    : (Number(t.price) || 0);
   const hotel = includeHotel ? (rates.hotelPerDay || 0) * days * travelers : 0;
   const food = includeFood ? (rates.foodPerDay || 0) * days * travelers : 0;
-  const base = (Number(t.price) || 0) * travelers;
+  const base = unit * travelers;
   return {
-    days, includeHotel, includeFood,
+    days, includeHotel, includeFood, guestType, unitPrice: unit,
     hotel, food,
     base,
     total: Math.round((base + hotel + food) / 100) * 100
@@ -1161,7 +1189,8 @@ function updateTourBookingPrice(id){
   const bits = [];
   if(c.includeHotel) bits.push('hotel');
   if(c.includeFood) bits.push('food');
-  el.innerHTML = `${fmtNPR(c.total)} <small>total · ${travelers} traveler(s)${bits.length ? ' · ' + bits.join(' + ') : ' · guide only'}</small>`;
+  const gLabel = c.guestType === 'local' ? 'local' : 'foreigner';
+  el.innerHTML = `${fmtNPR(c.total)} <small>total · ${travelers} traveler(s) · ${gLabel}${bits.length ? ' · ' + bits.join(' + ') : ''}</small>`;
 }
 
 async function goToCheckout(id){
@@ -1184,8 +1213,11 @@ async function goToCheckout(id){
     total: c.total,
     includeHotel: c.includeHotel,
     includeFood: c.includeFood,
+    guestType: c.guestType || 'foreigner',
+    unitPrice: c.unitPrice,
     sessionUser,
-    paymentMethod: null
+    paymentMethod: null,
+    paymentProof: null
   };
 
   renderPaymentMethodSelector();
@@ -1247,18 +1279,88 @@ function renderPaymentForm(){
     </div>
     <div class="field"><label>Phone / WhatsApp</label><input id="bkPhone" value="${esc(sessionUser?.phone || '')}" placeholder="+977-98XXXXXXXX"></div>
     <div class="field">
-      <label>Transaction Reference ID</label>
-      <input id="bkTxnRef" placeholder="e.g. ESW-9842109 or Bank Ref Number">
+      <label>Transaction Reference ID <span class="req">*</span></label>
+      <input id="bkTxnRef" required autocomplete="off" placeholder="e.g. ESW-9842109 or Bank Ref Number">
+    </div>
+    <div class="field">
+      <label>Payment proof (photo of receipt / screenshot) <span class="req">*</span></label>
+      <input type="file" id="bkPaymentProof" accept="image/*" capture="environment" onchange="handlePaymentProofFile(this)">
+      <p class="form-note">Upload a clear photo of your transfer confirmation. Max 4 MB.</p>
+      <div id="bkProofPreview" class="proof-preview" hidden></div>
+    </div>
+    <!-- Honeypot spam trap — leave empty -->
+    <div class="hp-field" aria-hidden="true">
+      <label>Company</label>
+      <input type="text" id="bkCompany" name="company" tabindex="-1" autocomplete="off">
     </div>
     <label class="checkbox-field">
       <input type="checkbox" id="bkAgreeTerms">
-      <span>I've completed the payment and agree to the <a href="#" onclick="openTermsModal(); return false;">Terms &amp; Conditions</a>.</span>
+      <span>I've completed the payment and agree to the <a href="#" onclick="openTermsModal(); return false;">Terms &amp; Conditions</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
     </label>
     <button class="btn btn-primary" style="width:100%;margin-top:10px;" id="submitBookingBtn" onclick="submitFinalBooking()">Submit payment details</button>
     <p class="form-note" style="margin-top:12px;">Once submitted, our team verifies your payment and assigns your rider — you'll see their name and phone number in <strong>My Account</strong> once confirmed.</p>
   `;
   showOverlay();
 }
+
+
+async function handlePaymentProofFile(input){
+  const file = input.files && input.files[0];
+  const prev = document.getElementById('bkProofPreview');
+  if(!file){
+    if(pendingBooking) pendingBooking.paymentProof = null;
+    if(prev){ prev.hidden = true; prev.innerHTML = ''; }
+    return;
+  }
+  if(!file.type.startsWith('image/')){
+    showToast('Please upload an image file (JPG, PNG, or WebP).', 'error');
+    input.value = '';
+    return;
+  }
+  if(file.size > 4 * 1024 * 1024){
+    showToast('Image must be under 4 MB. Compress or crop the screenshot.', 'error');
+    input.value = '';
+    return;
+  }
+  // Resize client-side to keep payload small
+  try {
+    const dataUrl = await compressImageFile(file, 1280, 0.72);
+    if(pendingBooking) pendingBooking.paymentProof = dataUrl;
+    if(prev){
+      prev.hidden = false;
+      prev.innerHTML = `<img src="${dataUrl}" alt="Payment proof preview"><button type="button" class="btn btn-outline btn-sm" onclick="clearPaymentProof()">Remove</button>`;
+    }
+  } catch(e){
+    console.error(e);
+    showToast('Could not read that image. Try another file.', 'error');
+  }
+}
+function clearPaymentProof(){
+  if(pendingBooking) pendingBooking.paymentProof = null;
+  const input = document.getElementById('bkPaymentProof');
+  if(input) input.value = '';
+  const prev = document.getElementById('bkProofPreview');
+  if(prev){ prev.hidden = true; prev.innerHTML = ''; }
+}
+function compressImageFile(file, maxW, quality){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width, h = img.height;
+      if(w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 
 async function submitFinalBooking(){
   const name = document.getElementById('bkName').value.trim();
@@ -1267,9 +1369,16 @@ async function submitFinalBooking(){
   const txnRef = document.getElementById('bkTxnRef').value.trim();
   const agreed = document.getElementById('bkAgreeTerms').checked;
 
-  if(!name || !email || !phone || !txnRef){ showToast('Please complete all fields including your transaction reference ID.', 'error'); return; }
-  if(!isValidEmail(email)){ showToast('Please enter a valid email address.', 'error'); return; }
-  if(!agreed){ showToast('Please confirm you\u2019ve paid and agree to the Terms & Conditions.', 'error'); return; }
+  // Honeypot — bots fill this
+  const hp = (document.getElementById('bkCompany')?.value || '').trim();
+  if(hp){ showToast('Submission blocked.', 'error'); return; }
+
+  if(!name || name.length < 2){ showToast('Please enter your full name.', 'error'); return; }
+  if(!email || !isValidEmail(email)){ showToast('Please enter a valid email address.', 'error'); return; }
+  if(!phone || phone.replace(/\D/g,'').length < 7){ showToast('Please enter a valid phone / WhatsApp number.', 'error'); return; }
+  if(!txnRef || txnRef.length < 4){ showToast('Enter your transaction reference ID from the bank or eSewa app.', 'error'); return; }
+  if(!pendingBooking?.paymentProof){ showToast('Please upload a photo of your payment proof.', 'error'); return; }
+  if(!agreed){ showToast('Please confirm you\u2019ve paid and agree to the Terms & Privacy Policy.', 'error'); return; }
   if(!pendingBooking || !pendingBooking.paymentMethod){ showToast('Something went wrong — please start the booking again.', 'error'); return; }
 
   const restoreBtn = setBusy(document.getElementById('submitBookingBtn'), 'Submitting…');
@@ -1282,18 +1391,23 @@ async function submitFinalBooking(){
     date: pendingBooking.date,
     travelers: pendingBooking.travelers,
     total: pendingBooking.total,
+    guest_type: pendingBooking.guestType || 'foreigner',
     name,
     email,
     phone,
     txn_ref: txnRef,
     payment_method: pendingBooking.paymentMethod,
-    // Nothing is auto-confirmed anymore. An admin has to verify the
-    // transaction reference and assign a rider before this becomes
-    // "Confirmed" and the rider's details become visible to the customer.
+    payment_proof: pendingBooking.paymentProof || null,
     status: 'Pending',
     guide: null,
     guide_phone: null
   };
+  // Keep a local copy of the proof so admin can view even if DB column is missing
+  try {
+    const proofs = JSON.parse(localStorage.getItem('feelit_payment_proofs') || '{}');
+    proofs[ref] = pendingBooking.paymentProof;
+    localStorage.setItem('feelit_payment_proofs', JSON.stringify(proofs));
+  } catch(e){}
 
   const bookingSaved = await sbWrite(
     supabaseClient.from('bookings').insert([newBooking]),
@@ -1410,31 +1524,52 @@ async function handleStandardLogin(){
   const pass = document.getElementById('authPass').value.trim();
   if(!email || !pass){ showToast('Enter an email and password.', 'error'); return; }
 
+  // Client-side lockout (stops casual brute force in this browser only)
+  let tries = 0;
+  try { tries = parseInt(sessionStorage.getItem('feelit_login_tries') || '0', 10); } catch(e){}
+  if(tries >= ADMIN_LOGIN_MAX_TRIES){
+    showToast('Too many failed attempts. Wait or clear site data, then try again.', 'error');
+    return;
+  }
+
   const restoreBtn = setBusy(document.getElementById('loginBtn'), 'Checking…');
   const hashedPass = await sha256(pass);
+  const isStaffEmail = STAFF_EMAILS.some(e => e.toLowerCase() === email.toLowerCase());
 
-  // Check Secure Hash for Admin
-  if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && hashedPass === ADMIN_PASS_HASH){
+  // Path A: Supabase Auth staff (preferred after RLS harden)
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+  if(!error && data?.user){
     restoreBtn();
-    // Session flag: timestamp + random token. admin.html checks age (< 4h).
-    // This is still client-side only — see SECURITY note. Real protection needs
-    // Supabase Auth + RLS that denies anon writes.
+    try { sessionStorage.removeItem('feelit_login_tries'); } catch(e){}
+    const uEmail = (data.user.email || '').toLowerCase();
+    if(STAFF_EMAILS.some(e => e.toLowerCase() === uEmail)){
+      const token = crypto.getRandomValues(new Uint8Array(16));
+      const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
+      sessionStorage.setItem('feelit_admin_session', JSON.stringify({ t: Date.now(), k: tokenHex, email: uEmail }));
+      showToast('Staff session started.', 'success');
+      window.location.href = 'index.html?admin=1';
+      return;
+    }
+    checkUserSession();
+    renderUserDashboard({ name: uEmail.split('@')[0], email: uEmail });
+    return;
+  }
+
+  // Path B: legacy hash (deprecated) — only if Supabase user not set up yet
+  if(isStaffEmail && hashedPass === ADMIN_PASS_HASH){
+    restoreBtn();
+    try { sessionStorage.removeItem('feelit_login_tries'); } catch(e){}
     const token = crypto.getRandomValues(new Uint8Array(16));
     const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
-    sessionStorage.setItem('feelit_admin_session', JSON.stringify({ t: Date.now(), k: tokenHex }));
+    sessionStorage.setItem('feelit_admin_session', JSON.stringify({ t: Date.now(), k: tokenHex, email: email.toLowerCase(), legacy: true }));
+    showToast('Legacy staff gate — create a Supabase Auth user for real security.', 'success');
     window.location.href = 'index.html?admin=1';
     return;
   }
 
-  // Supabase standard user sign in
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
   restoreBtn();
-  if(error){
-    showToast('Invalid email or password.', 'error');
-  } else {
-    checkUserSession();
-    renderUserDashboard({ name: data.user.email.split('@')[0], email: data.user.email });
-  }
+  try { sessionStorage.setItem('feelit_login_tries', String(tries + 1)); } catch(e){}
+  showToast('Invalid email or password.', 'error');
 }
 
 async function renderUserDashboard(user){
@@ -1442,6 +1577,15 @@ async function renderUserDashboard(user){
   try {
     const { data } = await supabaseClient.from('bookings').select('*').eq('email', user.email);
     bookingsList = data || [];
+  } catch(e){}
+  // Merge local ride packs + status overrides
+  try {
+    const flags = JSON.parse(localStorage.getItem('feelit_booking_status') || '{}');
+    bookingsList = bookingsList.map(b => {
+      const pack = loadRidePack(b.id);
+      const st = flags[String(b.id)];
+      return { ...b, ...(st ? { status: st } : {}), ride_details: b.ride_details || JSON.stringify(pack) };
+    });
   } catch(e){}
 
   document.getElementById('modalContent').innerHTML = `
@@ -1451,9 +1595,10 @@ async function renderUserDashboard(user){
     <div style="margin-bottom:24px;">
       <button class="btn btn-outline" onclick="handleUserLogout()">Logout</button>
     </div>
-    <h3>My Tour Bookings</h3>
+    <h3>My rides</h3>
+    <p class="form-note">After we confirm payment you’ll see your rider, meeting point, itinerary, meals, and notes here. Message us anytime below.</p>
     <div style="margin-top:14px;margin-bottom:28px;">
-      ${bookingsList.length ? bookingsList.map(b => renderBookingRowForUser(b)).join('') : '<div class="empty-state">No bookings found on your account.</div>'}
+      ${bookingsList.length ? bookingsList.map(b => renderBookingRowForUser(b)).join('') : '<div class="empty-state">No bookings yet.</div>'}
     </div>
     <h3>Messages with our team</h3>
     <div id="dashboardMessages" style="margin-top:14px;"><div class="empty-state">Loading…</div></div>
@@ -1466,17 +1611,52 @@ async function renderUserDashboard(user){
 }
 
 function renderBookingRowForUser(b){
-  const statusClass = b.status === 'Confirmed' ? 'status-confirmed' : (b.status === 'Cancelled' ? 'status-cancelled' : 'status-pending');
+  const status = b.status || 'Pending';
+  const statusClass = statusClassFor(status);
+  const pack = mergeBookingRidePack(b);
+  const active = ['Confirmed', 'In Progress', 'Completed'].includes(status);
+
   let riderBlock = '';
-  if(b.status === 'Confirmed' && b.guide){
+  if(active && b.guide){
     riderBlock = `
       <div class="rider-reveal-box">
-        <strong>Assigned Rider:</strong> ${esc(b.guide)} — <a href="tel:${esc(b.guide_phone)}">${esc(b.guide_phone)}</a>
+        <strong>Your rider:</strong> ${esc(b.guide)}
+        ${b.guide_phone ? ` — <a href="tel:${esc(b.guide_phone)}">${esc(b.guide_phone)}</a>` : ''}
+        ${b.guide_phone ? ` · <a href="https://wa.me/${esc(String(b.guide_phone).replace(/[^0-9]/g,''))}" target="_blank" rel="noopener">WhatsApp rider</a>` : ''}
       </div>`;
-  } else if(b.status === 'Cancelled'){
-    riderBlock = `<div class="pending-note">This booking was cancelled. Contact us if that's unexpected.</div>`;
+  } else if(status === 'Cancelled'){
+    riderBlock = `<div class="pending-note">This booking was cancelled. Message us below if that looks wrong.</div>`;
   } else {
-    riderBlock = `<div class="pending-note">Payment verification in progress — your rider will appear here once confirmed.</div>`;
+    riderBlock = `<div class="pending-note">Payment verification in progress — rider + full ride briefing appear here after confirmation.</div>`;
+  }
+
+  const packBlock = active ? renderRidePackCard(pack) : '';
+
+  let afterRide = '';
+  if(status === 'Completed'){
+    afterRide = `
+      <div class="after-ride-box">
+        <h4>How was your ride?</h4>
+        <p class="form-note">Rate your rider and leave an optional tip. Tips go directly to the rider via WhatsApp.</p>
+        <div class="field"><label>Stars (1–5)</label>
+          <select id="rate-stars-${esc(b.id)}">
+            <option value="5">5 — Excellent</option>
+            <option value="4">4 — Great</option>
+            <option value="3">3 — Good</option>
+            <option value="2">2 — OK</option>
+            <option value="1">1 — Poor</option>
+          </select>
+        </div>
+        <div class="field"><label>Your review</label>
+          <textarea id="rate-text-${esc(b.id)}" rows="2" placeholder="Road, rider, vibe…"></textarea>
+        </div>
+        <div class="field"><label>Tip amount (NPR, optional)</label>
+          <input type="number" id="tip-npr-${esc(b.id)}" min="0" step="100" placeholder="e.g. 500">
+        </div>
+        <button class="btn btn-primary" type="button" onclick="submitPostRideFeedback('${esc(b.id)}','${esc(b.tour_id||'')}','${esc(b.guide||'')}','${esc(b.guide_phone||'')}','${esc(b.email||'')}')">Submit rating &amp; tip</button>
+      </div>`;
+  } else if(status === 'In Progress'){
+    afterRide = `<div class="pending-note">Ride in progress — stay safe. When it ends, you’ll rate your rider here.</div>`;
   }
 
   const tourRef = tours.find(t => t.id === b.tour_id);
@@ -1485,17 +1665,61 @@ function renderBookingRowForUser(b){
     : '';
 
   return `
-    <div class="booking-row" style="flex-direction:column;align-items:stretch;">
-      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;">
+    <div class="booking-row" style="flex-direction:column;align-items:stretch;" id="user-booking-${esc(b.id)}">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <strong>${esc(b.tour_title)}</strong>
-        <span class="status ${statusClass}">${esc(b.status || 'Pending')}</span>
+        <span class="status ${statusClass}">${esc(status)}</span>
       </div>
-      <div style="font-size:13px;color:var(--ink-soft);margin-top:4px;">Date: ${esc(b.date)} · Ref: ${esc(b.ref)} · Paid via ${esc(PAYMENT_METHODS[b.payment_method]?.label || b.payment_method || '—')}</div>
+      <div style="font-size:13px;color:var(--ink-soft);margin-top:4px;">Date: ${esc(b.date)} · Ref: ${esc(b.ref || b.id)} · Paid via ${esc(PAYMENT_METHODS[b.payment_method]?.label || b.payment_method || '—')}</div>
       ${weatherBlock}
       ${riderBlock}
+      ${packBlock}
+      ${afterRide}
     </div>
   `;
 }
+
+async function submitPostRideFeedback(bookingId, tourId, guideName, guidePhone, email){
+  const stars = parseInt(document.getElementById(`rate-stars-${bookingId}`)?.value || '5', 10);
+  const text = (document.getElementById(`rate-text-${bookingId}`)?.value || '').trim();
+  const tip = parseInt(document.getElementById(`tip-npr-${bookingId}`)?.value || '0', 10) || 0;
+
+  // Save review if table exists
+  try {
+    await supabaseClient.from('reviews').insert([{
+      tour_id: tourId || 'general',
+      email: email || '',
+      name: email ? email.split('@')[0] : 'Rider',
+      rating: stars,
+      comment: text || `Rated ${guideName || 'rider'} after the ride.`,
+      created_at: new Date().toISOString()
+    }]);
+  } catch(e){ console.warn('Review save', e); }
+
+  const pack = { ...loadRidePack(bookingId), rated: true, tip_npr: tip, rating: stars, review: text };
+  saveRidePackLocal(bookingId, pack);
+  try {
+    await supabaseClient.from('bookings').update({
+      ride_details: JSON.stringify(pack),
+      rated: true,
+      tip_npr: tip
+    }).eq('id', bookingId);
+  } catch(e){}
+
+  showToast('Thanks for the feedback!', 'success');
+
+  if(tip > 0 && guidePhone){
+    const digits = String(guidePhone).replace(/[^0-9]/g, '');
+    const withCountry = digits.startsWith('977') ? digits : `977${digits.replace(/^0+/, '')}`;
+    const msg = `Hi ${guideName || ''}! A Feel It rider left a tip of NPR ${tip} for you. Please arrange the transfer with the office. Thank you!`;
+    window.open(`https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // refresh dashboard if possible
+  const sessionUser = await checkActiveAuthUser();
+  if(sessionUser) renderUserDashboard({ name: sessionUser.name || sessionUser.email.split('@')[0], email: sessionUser.email });
+}
+
 
 async function handleUserLogout(){
   await supabaseClient.auth.signOut();
@@ -1574,8 +1798,19 @@ async function renderMessageThreadInto(holder, email, displayName, opts = {}){
     msgs = data || [];
   } catch(e){ loadError = e; console.error('Loading messages failed', e); }
 
-  const threadHtml = loadError
-    ? `<div class="empty-state admin-load-error">Could not load messages (${esc(loadError.message || 'unknown error')}). Check that Supabase has a "messages" table with a SELECT policy.</div>`
+  // Merge local fallback messages (when RLS blocks cloud writes)
+  const local = loadLocalMessages(email);
+  if(local.length){
+    const keys = new Set(msgs.map(m => (m.body || '') + '|' + (m.created_at || '') + '|' + (m.sender || '')));
+    local.forEach(m => {
+      const k = (m.body || '') + '|' + (m.created_at || '') + '|' + (m.sender || '');
+      if(!keys.has(k)) msgs.push(m);
+    });
+    msgs.sort((a,b) => String(a.created_at||'').localeCompare(String(b.created_at||'')));
+  }
+
+  const threadHtml = (!msgs.length && loadError)
+    ? `<div class="empty-state admin-load-error">Could not load messages (${esc(loadError.message || 'unknown error')}). Check Supabase "messages" table + SELECT policy. Local messages still work on this device.</div>`
     : (msgs.length
         ? msgs.map(m => `
             <div class="chat-bubble ${m.sender === 'admin' ? 'chat-bubble-admin' : 'chat-bubble-customer'}">
@@ -1603,12 +1838,15 @@ async function sendCustomerMessage(email, name, inputId, btnId, context){
   if(!body) return;
 
   const restoreBtn = setBusy(document.getElementById(btnId), '…');
+  const row = { email, name: name || email.split('@')[0], sender: 'customer', body, created_at: new Date().toISOString() };
   const ok = await sbWrite(
-    supabaseClient.from('messages').insert([{ email, name: name || email.split('@')[0], sender: 'customer', body }]),
-    'Could not send your message — check that your Supabase RLS policy allows INSERT on messages'
+    supabaseClient.from('messages').insert([row]),
+    'Cloud message save failed — keeping a copy on this device'
   );
+  // Always keep local copy so chat works even if RLS blocks
+  saveLocalMessage(row);
   restoreBtn();
-  if(!ok) return;
+  if(!ok) showToast('Message saved on this device. Fix Supabase messages INSERT policy for cloud sync.', 'error');
 
   input.value = '';
   const holder = context === 'contact' ? document.getElementById('contactDynamic') : document.getElementById('dashboardMessages');
@@ -1672,7 +1910,18 @@ async function submitGuideApp(){
 }
 
 /* ---------------- Professional Admin Panel ---------------- */
+function requireStaffSession(){
+  if(!isValidAdminSession()){
+    showToast('Staff login required.', 'error');
+    openAuthModal();
+    return false;
+  }
+  return true;
+}
+
 async function renderAdminPanel(tab){
+  if(!requireStaffSession()) return;
+
   const tabs = ['bookings', 'tours', 'addTour', 'featured', 'costs', 'weather', 'settings', 'users', 'messages', 'reviews', 'photos', 'ad'];
   const labels = {
     bookings:'📋 Bookings', tours:'🏍️ Tours', addTour:'➕ Add Tour', featured:'⭐ Featured',
@@ -1691,6 +1940,19 @@ async function renderAdminPanel(tab){
     if(error){ bookingsLoadError = error; console.error('Loading bookings failed', error); }
     allBookings = data || [];
   } catch(e){ bookingsLoadError = e; console.error('Loading bookings failed', e); }
+  // Merge local ride packs + status (Start/Complete ride)
+  try {
+    const flags = JSON.parse(localStorage.getItem('feelit_booking_status') || '{}');
+    allBookings = allBookings.map(b => {
+      const pack = loadRidePack(b.id);
+      const st = flags[String(b.id)];
+      return {
+        ...b,
+        ...(st ? { status: st } : {}),
+        ride_details: b.ride_details || (Object.keys(pack).length ? JSON.stringify(pack) : b.ride_details)
+      };
+    });
+  } catch(e){}
   const pendingCount = allBookings.filter(b => (b.status || 'Pending') === 'Pending').length;
   const confirmedBookings = allBookings.filter(b => b.status === 'Confirmed');
   const revenue = confirmedBookings.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
@@ -1720,7 +1982,8 @@ async function renderAdminPanel(tab){
           </div>
           <div class="row-2">
             <div class="field"><label for="adm-duration-${esc(t.id)}">Duration</label><input id="adm-duration-${esc(t.id)}" value="${esc(t.duration || '')}"></div>
-            <div class="field"><label for="adm-price-${esc(t.id)}">Price (NPR)</label><input type="number" id="adm-price-${esc(t.id)}" value="${esc(t.price)}"></div>
+            <div class="field"><label for="adm-price-${esc(t.id)}">Foreigner price (NPR)</label><input type="number" id="adm-price-${esc(t.id)}" value="${esc(t.price)}"></div>
+            <div class="field"><label for="adm-price-local-${esc(t.id)}">Local price (NPR)</label><input type="number" id="adm-price-local-${esc(t.id)}" value="${esc(t.price_local || Math.round((t.price||0)*0.7))}"></div>
           </div>
           <div class="row-2">
             <div class="field"><label for="adm-guide-${esc(t.id)}">Default rider name</label><input id="adm-guide-${esc(t.id)}" value="${esc(t.guide || '')}"></div>
@@ -1908,8 +2171,21 @@ async function renderAdminPanel(tab){
 // One booking row in the admin panel. Pending bookings get an inline
 // "assign rider & confirm" form; this is the ONLY place a rider gets
 // attached to a booking, and the customer only sees it after this runs.
+
+function renderPaymentProofThumb(b){
+  let src = b.payment_proof || '';
+  if(!src){
+    try {
+      const proofs = JSON.parse(localStorage.getItem('feelit_payment_proofs') || '{}');
+      src = proofs[b.ref] || '';
+    } catch(e){}
+  }
+  if(!src) return '<div class="pending-note">No payment proof image attached.</div>';
+  return `<div class="payment-proof-admin"><span>Payment proof</span><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="Payment proof"></a></div>`;
+}
+
 function renderBookingRowForAdmin(b){
-  const statusClass = b.status === 'Confirmed' ? 'status-confirmed' : (b.status === 'Cancelled' ? 'status-cancelled' : 'status-pending');
+  const statusClass = statusClassFor(b.status);
   const methodLabel = PAYMENT_METHODS[b.payment_method]?.label || b.payment_method || '—';
   const tourRef = tours.find(t => t.id === b.tour_id);
   const weatherBlock = tourRef?.lat && tourRef?.lng
@@ -1917,12 +2193,37 @@ function renderBookingRowForAdmin(b){
     : '';
 
   let actionBlock = '';
-  if(b.status === 'Confirmed'){
+  if(b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Completed'){
+    const pack = mergeBookingRidePack(b);
+    const pid = esc(b.id);
     actionBlock = `
       <div class="rider-reveal-box">
-        <strong>Assigned Rider:</strong> ${esc(b.guide)} — <a href="tel:${esc(b.guide_phone)}">${esc(b.guide_phone)}</a>
+        <strong>Assigned Rider:</strong> ${esc(b.guide || '—')} — <a href="tel:${esc(b.guide_phone||'')}">${esc(b.guide_phone||'')}</a>
       </div>
-      <button class="btn btn-outline" style="margin-top:8px;border-color:#ef4444;color:#ef4444;" onclick="cancelBooking('${esc(b.id)}')">Cancel booking</button>
+      ${renderRidePackCard(pack, { adminPreview: true })}
+      <details class="ride-pack-editor" id="ride-editor-${pid}" ${pack.meeting_point ? '' : 'open'}>
+        <summary>📋 Edit ride pack (customer sees this)</summary>
+        <div class="ride-pack-form">
+          <div class="row-2">
+            <div class="field"><label>Meeting point</label><input id="rp-meet-${pid}" value="${esc(pack.meeting_point)}" placeholder="e.g. Thamel, Kathmandu — Hotel Yak gate"></div>
+            <div class="field"><label>Meeting time</label><input id="rp-time-${pid}" value="${esc(pack.meeting_time)}" placeholder="e.g. 7:30 AM"></div>
+          </div>
+          <div class="field"><label>Pickup notes</label><input id="rp-pickup-${pid}" value="${esc(pack.pickup)}" placeholder="Hotel pickup / self-arrive"></div>
+          <div class="field"><label>Itinerary / route description</label><textarea id="rp-itin-${pid}" rows="3" placeholder="Day 1: … Day 2: … stops, viewpoints, border times">${esc(pack.itinerary)}</textarea></div>
+          <div class="field"><label>Where they’ll eat (meals)</label><textarea id="rp-meals-${pid}" rows="2" placeholder="Lunch at local thakali house in … / dinner included at lodge">${esc(pack.meals)}</textarea></div>
+          <div class="field"><label>What to bring</label><textarea id="rp-bring-${pid}" rows="2" placeholder="Helmet provided. Bring jacket, sunscreen, water, cash for snacks.">${esc(pack.bring)}</textarea></div>
+          <div class="field"><label>Extra notes for customer</label><textarea id="rp-notes-${pid}" rows="2" placeholder="Weather may change — rain gear in pannier. Start early.">${esc(pack.notes)}</textarea></div>
+          <div class="field"><label>Emergency / office contact</label><input id="rp-emerg-${pid}" value="${esc(pack.emergency)}" placeholder="+977…"></div>
+          <button type="button" class="btn btn-primary" onclick="saveRidePackForBooking('${pid}')">Save ride pack</button>
+          <button type="button" class="btn btn-outline" onclick="notifyCustomerRidePack('${pid}','${esc(b.phone||'')}','${esc(b.name||'')}','${esc(b.tour_title||'')}','${esc(b.date||'')}','${esc(b.guide||'')}','${esc(b.guide_phone||'')}')">WhatsApp full briefing</button>
+        </div>
+      </details>
+      <div class="ride-status-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+        ${b.status === 'Confirmed' ? `<button class="btn btn-primary" type="button" onclick="setBookingStatus('${pid}','In Progress')">▶️ Start ride</button>` : ''}
+        ${b.status === 'In Progress' ? `<button class="btn btn-primary" type="button" onclick="setBookingStatus('${pid}','Completed')">✅ Complete ride</button>` : ''}
+        ${b.status === 'Completed' ? `<span class="pending-note">Ride completed — customer can rate &amp; tip in My Account.</span>` : ''}
+        <button class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;" type="button" onclick="cancelBooking('${pid}')">Cancel booking</button>
+      </div>
     `;
   } else if(b.status === 'Cancelled'){
     actionBlock = `<div class="pending-note">Cancelled.</div>`;
@@ -1948,7 +2249,9 @@ function renderBookingRowForAdmin(b){
       <div style="font-size:13px;color:var(--ink-soft);margin-top:4px;">
         Customer: ${esc(b.name)} (${esc(b.email)} · ${esc(b.phone)})<br>
         Paid via <strong>${esc(methodLabel)}</strong> · Txn Ref: <strong>${esc(b.txn_ref)}</strong> · Total: ${fmtNPR(b.total)}
+        ${b.guest_type ? ` · <strong>${esc(b.guest_type)}</strong>` : ''}
       </div>
+      ${renderPaymentProofThumb(b)}
       ${weatherBlock}
       ${actionBlock}
     </div>
@@ -1964,6 +2267,16 @@ async function buildAdminMessagesBody(){
     if(error){ loadError = error; console.error('Loading messages failed', error); }
     allMsgs = data || [];
   } catch(e){ loadError = e; console.error('Loading messages failed', e); }
+  // Merge device-local messages
+  try {
+    const local = loadAllLocalMessages();
+    const keys = new Set(allMsgs.map(m => (m.email||'')+'|'+(m.body||'')+'|'+(m.created_at||'')+'|'+(m.sender||'')));
+    local.forEach(m => {
+      const k = (m.email||'')+'|'+(m.body||'')+'|'+(m.created_at||'')+'|'+(m.sender||'');
+      if(!keys.has(k)) allMsgs.push(m);
+    });
+    allMsgs.sort((a,b) => String(a.created_at||'').localeCompare(String(b.created_at||'')));
+  } catch(e){}
 
   if(loadError){
     return `<div class="empty-state admin-load-error">Could not load messages (${esc(loadError.message || 'unknown error')}). Check that Supabase has a "messages" table with a SELECT policy for anon.</div>`;
@@ -2033,12 +2346,15 @@ async function adminSendReply(email){
   if(!body) return;
 
   const restoreBtn = setBusy(document.getElementById('adminReplyBtn'), 'Sending…');
+  const row = { email, name: 'Feel It Team', sender: 'admin', body, created_at: new Date().toISOString() };
   const ok = await sbWrite(
-    supabaseClient.from('messages').insert([{ email, sender: 'admin', body }]),
-    'Could not send reply — check that your Supabase RLS policy allows INSERT on messages'
+    supabaseClient.from('messages').insert([row]),
+    'Cloud reply failed — saved on this device'
   );
+  saveLocalMessage(row);
   restoreBtn();
-  if(!ok) return;
+  if(!ok) showToast('Reply saved on this device. Fix messages INSERT policy for cloud sync.', 'error');
+  input.value = '';
   renderAdminPanel('messages');
 }
 
@@ -2216,6 +2532,71 @@ function notifyCustomerWhatsApp(customerPhone, customerName, tourTitle, date, gu
   window.open(`https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
+
+async function saveRidePackForBooking(bookingId){
+  const pack = {
+    meeting_point: (document.getElementById(`rp-meet-${bookingId}`)?.value || '').trim(),
+    meeting_time: (document.getElementById(`rp-time-${bookingId}`)?.value || '').trim(),
+    pickup: (document.getElementById(`rp-pickup-${bookingId}`)?.value || '').trim(),
+    itinerary: (document.getElementById(`rp-itin-${bookingId}`)?.value || '').trim(),
+    meals: (document.getElementById(`rp-meals-${bookingId}`)?.value || '').trim(),
+    bring: (document.getElementById(`rp-bring-${bookingId}`)?.value || '').trim(),
+    notes: (document.getElementById(`rp-notes-${bookingId}`)?.value || '').trim(),
+    emergency: (document.getElementById(`rp-emerg-${bookingId}`)?.value || '').trim()
+  };
+  saveRidePackLocal(bookingId, pack);
+  // Try Supabase — ignore failure if column missing
+  try {
+    const { error } = await supabaseClient.from('bookings').update({
+      ride_details: JSON.stringify(pack)
+    }).eq('id', bookingId);
+    if(error) console.warn('ride_details column may be missing — saved locally', error.message);
+  } catch(e){ console.warn(e); }
+  showToast('Ride pack saved — customer sees it in My Account.', 'success');
+  renderAdminPanel('bookings');
+}
+
+async function setBookingStatus(bookingId, status){
+  const ok = await sbWrite(
+    supabaseClient.from('bookings').update({ status }).eq('id', bookingId),
+    'Could not update ride status — check Supabase UPDATE policy on bookings'
+  );
+  if(!ok){
+    // still allow local-only tracking if RLS blocks
+    try {
+      const flags = JSON.parse(localStorage.getItem('feelit_booking_status') || '{}');
+      flags[String(bookingId)] = status;
+      localStorage.setItem('feelit_booking_status', JSON.stringify(flags));
+    } catch(e){}
+    showToast('Status saved on this device (database update failed).', 'error');
+  } else {
+    showToast('Ride status → ' + status, 'success');
+  }
+  renderAdminPanel('bookings');
+}
+
+function notifyCustomerRidePack(bookingId, customerPhone, customerName, tourTitle, date, guide, guidePhone){
+  const pack = mergeBookingRidePack({ id: bookingId, guide, guide_phone: guidePhone });
+  if(!customerPhone){ showToast('No customer phone on this booking.', 'error'); return; }
+  const digits = String(customerPhone).replace(/[^0-9]/g, '');
+  const withCountry = digits.startsWith('977') ? digits : `977${digits.replace(/^0+/, '')}`;
+  const lines = [
+    `Hi ${customerName || 'there'}! Your Feel It ride briefing for "${tourTitle}" (${date}):`,
+    guide ? `Rider: ${guide}${guidePhone ? ' ('+guidePhone+')' : ''}` : '',
+    pack.meeting_point ? `Meet: ${pack.meeting_point}` : '',
+    pack.meeting_time ? `Time: ${pack.meeting_time}` : '',
+    pack.pickup ? `Pickup: ${pack.pickup}` : '',
+    pack.itinerary ? `Itinerary:\n${pack.itinerary}` : '',
+    pack.meals ? `Meals:\n${pack.meals}` : '',
+    pack.bring ? `Bring: ${pack.bring}` : '',
+    pack.notes ? `Notes: ${pack.notes}` : '',
+    pack.emergency ? `Emergency: ${pack.emergency}` : '',
+    'Open My Account on the website anytime for the full briefing + messages.'
+  ].filter(Boolean);
+  window.open(`https://wa.me/${withCountry}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+}
+
+
 async function cancelBooking(bookingId){
   if(!confirm('Cancel this booking? The customer will see it as cancelled.')) return;
   const ok = await sbWrite(
@@ -2349,6 +2730,7 @@ const val = id => (document.getElementById(id)?.value || '').trim();
 
 async function saveTourEdits(id){
   const price = parseFloat(val(`adm-price-${id}`));
+  const price_local = parseFloat(val(`adm-price-local-${id}`));
   const title = val(`adm-title-${id}`);
   const region = val(`adm-region-${id}`);
   const duration = val(`adm-duration-${id}`);
@@ -2370,7 +2752,7 @@ async function saveTourEdits(id){
     cropMap[id] = { image_position, image_zoom };
     localStorage.setItem('feelit_tour_crop', JSON.stringify(cropMap));
   } catch(e){}
-  const patch = { title, region, duration, price, guide, guide_phone: guidePhone, desc, hidden_gem: hiddenGem };
+  const patch = { title, region, duration, price, price_local: (Number.isFinite(price_local) ? price_local : Math.round(price*0.7)), guide, guide_phone: guidePhone, desc, hidden_gem: hiddenGem };
   patch.image_url = imgSrc(image);
   if(!Number.isNaN(lat)) patch.lat = lat;
   if(!Number.isNaN(lng)) patch.lng = lng;
@@ -3004,7 +3386,53 @@ function adminLogout(){
 saveCostsToStorage(loadCosts());
 
 /* ---------------- Initialization ---------------- */
+
+/* ---- HTTPS, cookies, analytics (no secrets in client beyond public anon key) ---- */
+function enforceHttps(){
+  try {
+    if(location.protocol === 'http:' && /github\.io$/.test(location.hostname)){
+      location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+    }
+  } catch(e){}
+}
+function initCookieConsent(){
+  const banner = document.getElementById('cookieBanner');
+  if(!banner) return;
+  let choice = null;
+  try { choice = localStorage.getItem('feelit_cookie_consent'); } catch(e){}
+  if(choice === 'all'){ loadAnalyticsIfAllowed(); return; }
+  if(choice === 'essential') return;
+  banner.hidden = false;
+  document.getElementById('cookieAccept')?.addEventListener('click', () => {
+    try { localStorage.setItem('feelit_cookie_consent', 'all'); } catch(e){}
+    banner.hidden = true;
+    loadAnalyticsIfAllowed();
+  });
+  document.getElementById('cookieReject')?.addEventListener('click', () => {
+    try { localStorage.setItem('feelit_cookie_consent', 'essential'); } catch(e){}
+    banner.hidden = true;
+  });
+}
+function loadAnalyticsIfAllowed(){
+  // Optional: set your GA4 measurement ID here (public). Leave empty to skip.
+  const GA_ID = ''; // e.g. 'G-XXXXXXXX'
+  if(!GA_ID || document.getElementById('ga4-script')) return;
+  const s = document.createElement('script');
+  s.id = 'ga4-script';
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_ID);
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', GA_ID, { anonymize_ip: true });
+}
+
+
 window.addEventListener('DOMContentLoaded', async () => {
+  enforceHttps();
+  initCookieConsent();
   loadTheme();
   // Apply admin-saved hero background if any
   try {
@@ -3032,7 +3460,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // homepage. Only happens if this tab actually has the admin session
   // flag (i.e. it isn't just someone guessing the URL).
   if(new URLSearchParams(location.search).get('admin') === '1' && isValidAdminSession()){
-    history.replaceState(null, '', location.pathname); // drop ?admin=1 so a refresh doesn't force-reopen it
+    history.replaceState(null, '', location.pathname + location.hash); // drop ?admin=1 only; keep path + hash
     renderAdminPanel('bookings');
   }
 

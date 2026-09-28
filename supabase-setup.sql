@@ -1,3 +1,8 @@
+-- SECURITY WARNING: The original "anon for all" policies let ANYONE
+-- read/update/delete bookings. Run security-rls-harden.sql after this file.
+-- Create a staff user: Supabase → Authentication → Users → Add user
+-- (use the same email listed in STAFF_EMAILS in script.js).
+
 -- ============================================================
 -- Run this ONCE in Supabase → SQL Editor. Safe to re-run.
 -- ============================================================
@@ -56,3 +61,52 @@ create policy "photos_all" on photos for all to anon using (true) with check (tr
 
 drop policy if exists "popup_ad_all" on popup_ad;
 create policy "popup_ad_all" on popup_ad for all to anon using (true) with check (true);
+
+-- 4) Optional: site_settings for admin-tunable keys (weather_fx, hero_bg, etc.)
+create table if not exists site_settings (
+  key text primary key,
+  value text,
+  updated_at timestamptz default now()
+);
+alter table site_settings enable row level security;
+drop policy if exists "site_settings_all" on site_settings;
+create policy "site_settings_all" on site_settings for all to anon using (true) with check (true);
+
+-- 5) Optional: hidden_gem flag on tours (safe if column already exists)
+do $$ begin
+  alter table tours add column if not exists hidden_gem boolean default false;
+exception when others then null;
+end $$;
+
+-- 6) Optional: reviews table (if not already created)
+create table if not exists reviews (
+  id bigint generated always as identity primary key,
+  tour_id text not null,
+  email text,
+  name text,
+  rating int check (rating between 1 and 5),
+  body text,
+  created_at timestamptz default now()
+);
+alter table reviews enable row level security;
+drop policy if exists "reviews_all" on reviews;
+create policy "reviews_all" on reviews for all to anon using (true) with check (true);
+
+-- Ride pack + post-ride fields on bookings
+do $$ begin
+  alter table bookings add column if not exists ride_details text;
+  alter table bookings add column if not exists tip_npr numeric default 0;
+  alter table bookings add column if not exists rated boolean default false;
+exception when others then null;
+end $$;
+
+-- Allow status values beyond Pending/Confirmed (application-enforced text)
+-- No enum change needed if status is already text.
+
+-- Dual pricing + payment proof
+do $$ begin
+  alter table tours add column if not exists price_local numeric;
+  alter table bookings add column if not exists payment_proof text;
+  alter table bookings add column if not exists guest_type text default 'foreigner';
+exception when others then null;
+end $$;

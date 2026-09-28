@@ -1,0 +1,43 @@
+FEEL IT — COMPLETE SITE PACKAGE (all features)
+==============================================
+
+1) Unzip this folder into your GitHub repo root (Feel-IT_OFFICAL).
+2) KEEP your existing files:
+     assets/1.png
+     assets/unnamed.png
+     (and any QR / payment images you already use)
+3) Commit + push all files.
+4) In Supabase → SQL Editor:
+     a) Run supabase-setup.sql (if not already)
+     b) Run security-rls-harden.sql  ← important for security
+5) Supabase → Authentication → Users → create staff user
+     Email must match STAFF_EMAILS in script.js
+     (admin@feelit.com or feelitofficial@gmail.com)
+6) Hard refresh the live site (Ctrl+Shift+R).
+
+Site: https://kanha195.github.io/Feel-IT_OFFICAL/
+
+FEATURES INCLUDED
+-----------------
+• Hero + weather card + site-wide weather FX + wind lamp
+• Featured tours with ‹ › scroll + infinite loop
+• Hidden Gems section
+• Customize ride (hotel/food toggles; guide always on)
+• Dual price: foreigner + local
+• Payment proof photo upload at checkout
+• Ride pack (meeting point, itinerary, meals, notes)
+• Booking status: Pending → Confirmed → In Progress → Completed
+• Rate rider + tip after ride
+• Customer ↔ team messaging
+• Operations panel: bookings, tours, featured, costs, weather, settings…
+• Financial Control (admin.html)
+• Dowie + Snowie preloader
+• Privacy policy, cookie banner, CSP, HTTPS upgrade
+• robots.txt, sitemap.xml, 404 page
+• Mobile login button, dual WhatsApp fixed
+• Security harden SQL (closes open anon write/list on bookings)
+
+STAFF LOGIN
+-----------
+Use Supabase Auth staff email/password after running security-rls-harden.sql.
+Legacy hash login still works until you fully switch.

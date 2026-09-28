@@ -54,36 +54,39 @@
 
 <header>
   <div class="wrap nav">
-    <a href="index.html" class="brand">
+    <a href="./index.html" class="brand">
       <img src="assets/unnamed.png" width="38" height="38" alt="Feel It Nepal logo" class="brand-logo" onerror="this.onerror=null;this.src='assets/unnamed.png'">
       <span class="brand-text"><span class="display">FEEL IT</span><span>feel the road, not the window</span></span>
     </a>
     <div class="nav-links">
+      <a href="./index.html">Home</a>
       <a href="index.html#tours">Tours</a>
       <a href="index.html#hiddenGems">Hidden Gems</a>
       <a href="index.html#map">Map</a>
       <a href="gallery.html" class="nav-current" aria-current="page">Gallery</a>
-      <a href="index.html#how">How it works</a>
       <a href="index.html#contact">Contact</a>
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">☀️</button>
-      <button class="btn btn-outline" id="authNavBtn" onclick="openAuthModal()">Login / Account</button>
+      <button class="btn btn-outline auth-nav-btn" id="authNavBtn" onclick="openAuthModal()" aria-label="Login or open account">
+        <span class="auth-label-full">Login / Account</span>
+        <span class="auth-label-short">Login</span>
+      </button>
       <button class="menu-btn" id="menuBtn" onclick="toggleMobileMenu()" aria-label="Open menu" title="Menu">☰</button>
     </div>
   </div>
   <nav class="mobile-menu" id="mobileMenu">
-    <a href="index.html#tours">Tours</a>
-    <a href="index.html#hiddenGems">Hidden Gems</a>
-    <a href="index.html#map">Map</a>
-    <a href="gallery.html">Gallery</a>
-    <a href="index.html#how">How it works</a>
-    <a href="index.html#contact">Contact</a>
-    <a href="#" onclick="openAuthModal(); closeMobileMenu();">Login / Account</a>
+    <a href="./index.html" onclick="closeMobileMenu()">Home</a>
+    <a href="index.html#tours" onclick="closeMobileMenu()">Tours</a>
+    <a href="index.html#hiddenGems" onclick="closeMobileMenu()">Hidden Gems</a>
+    <a href="index.html#map" onclick="closeMobileMenu()">Map</a>
+    <a href="gallery.html" onclick="closeMobileMenu()">Gallery</a>
+    <a href="index.html#contact" onclick="closeMobileMenu()">Contact</a>
+    <a href="#" class="mobile-login-link" onclick="openAuthModal(); closeMobileMenu();">🔐 Login / Account</a>
   </nav>
 </header>
 
 <section class="gallery-hero">
   <div class="wrap">
-    <a href="index.html" class="back-home">
+    <a href="./index.html" class="back-home">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Back to home
     </a>
