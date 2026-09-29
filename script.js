@@ -7,6 +7,108 @@ const SUPABASE_ANON_KEY = 'sb_publishable_G6Su-3CqSjBJaVdRuYwfMw_dDTE2S8s';
 // Initialize Supabase client
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/* =========================================================================
+   SHARED HELPERS — messages local fallback + ride pack + status classes
+   (Must be global function declarations — used across dashboard & admin)
+   ========================================================================= */
+function loadLocalMessages(email){
+  try {
+    const all = JSON.parse(localStorage.getItem('feelit_messages') || '[]');
+    return all.filter(m => m.email === email);
+  } catch(e){ return []; }
+}
+function saveLocalMessage(row){
+  try {
+    const all = JSON.parse(localStorage.getItem('feelit_messages') || '[]');
+    all.push({
+      ...row,
+      id: row.id || ('local_' + Date.now()),
+      created_at: row.created_at || new Date().toISOString()
+    });
+    localStorage.setItem('feelit_messages', JSON.stringify(all));
+  } catch(e){}
+}
+function loadAllLocalMessages(){
+  try { return JSON.parse(localStorage.getItem('feelit_messages') || '[]'); }
+  catch(e){ return []; }
+}
+function loadRidePack(bookingId){
+  try {
+    const all = JSON.parse(localStorage.getItem('feelit_ride_packs') || '{}');
+    return all[String(bookingId)] || {};
+  } catch(e){ return {}; }
+}
+function saveRidePackLocal(bookingId, pack){
+  try {
+    const all = JSON.parse(localStorage.getItem('feelit_ride_packs') || '{}');
+    all[String(bookingId)] = {
+      ...loadRidePack(bookingId),
+      ...pack,
+      updated_at: new Date().toISOString()
+    };
+    localStorage.setItem('feelit_ride_packs', JSON.stringify(all));
+  } catch(e){}
+}
+function mergeBookingRidePack(b){
+  if(!b) return {};
+  const local = loadRidePack(b.id);
+  let remote = {};
+  if(b.ride_details){
+    try {
+      remote = typeof b.ride_details === 'string' ? JSON.parse(b.ride_details) : (b.ride_details || {});
+    } catch(e){ remote = {}; }
+  }
+  return {
+    meeting_point: remote.meeting_point || local.meeting_point || b.meeting_point || '',
+    meeting_time: remote.meeting_time || local.meeting_time || b.meeting_time || '',
+    itinerary: remote.itinerary || local.itinerary || b.itinerary || '',
+    meals: remote.meals || local.meals || b.meals || '',
+    notes: remote.notes || local.notes || b.ride_notes || '',
+    bring: remote.bring || local.bring || b.bring || '',
+    pickup: remote.pickup || local.pickup || '',
+    emergency: remote.emergency || local.emergency || (typeof CONTACT_INFO !== 'undefined' ? CONTACT_INFO.whatsapp : '') || '',
+    tip_npr: remote.tip_npr || local.tip_npr || b.tip_npr || 0,
+    rated: !!(remote.rated || local.rated || b.rated)
+  };
+}
+function statusClassFor(status){
+  const s = String(status || 'Pending').toLowerCase();
+  if(s === 'confirmed') return 'status-confirmed';
+  if(s === 'in progress' || s === 'in_progress') return 'status-progress';
+  if(s === 'completed') return 'status-completed';
+  if(s === 'cancelled') return 'status-cancelled';
+  return 'status-pending';
+}
+function renderRidePackCard(pack, opts){
+  opts = opts || {};
+  pack = pack || {};
+  const empty = !pack.meeting_point && !pack.meeting_time && !pack.itinerary && !pack.meals && !pack.notes && !pack.bring;
+  if(empty && opts.adminPreview){
+    return '<div class="pending-note">No ride pack yet — fill the form below so the customer sees every detail.</div>';
+  }
+  if(empty){
+    return '<div class="pending-note">Your full ride briefing will appear here once our team publishes it.</div>';
+  }
+  function escLines(s){
+    return esc(s || '').replace(/\n/g, '<br>');
+  }
+  return (
+    '<div class="ride-pack">' +
+      '<h4 class="ride-pack-title">🏍️ Your ride briefing</h4>' +
+      (pack.meeting_point ? '<div class="ride-pack-row"><span>📍 Meet</span><strong>' + esc(pack.meeting_point) + '</strong></div>' : '') +
+      (pack.meeting_time ? '<div class="ride-pack-row"><span>⏰ Time</span><strong>' + esc(pack.meeting_time) + '</strong></div>' : '') +
+      (pack.pickup ? '<div class="ride-pack-row"><span>🚗 Pickup</span><strong>' + esc(pack.pickup) + '</strong></div>' : '') +
+      (pack.itinerary ? '<div class="ride-pack-block"><span>🗺️ Itinerary / route</span><p>' + escLines(pack.itinerary) + '</p></div>' : '') +
+      (pack.meals ? '<div class="ride-pack-block"><span>🍽️ Where you’ll eat</span><p>' + escLines(pack.meals) + '</p></div>' : '') +
+      (pack.bring ? '<div class="ride-pack-block"><span>🎒 What to bring</span><p>' + escLines(pack.bring) + '</p></div>' : '') +
+      (pack.notes ? '<div class="ride-pack-block"><span>📝 Notes</span><p>' + escLines(pack.notes) + '</p></div>' : '') +
+      (pack.emergency ? '<div class="ride-pack-row"><span>🆘 Emergency / team</span><strong>' + esc(pack.emergency) + '</strong></div>' : '') +
+    '</div>'
+  );
+}
+
+
+
 const CONTACT_INFO = {
   email: 'feelitofficial@gmail.com',
   phone: '+977-9808747221',
@@ -396,6 +498,7 @@ function normalizeTour(t){
   // app never has to care which spelling a given row happens to use.
   return {
     ...t,
+    desc: t.desc || t.description || '',
     guide_phone: t.guide_phone || t.guidePhone || '',
     imageUrl: t.image_url || t.imageUrl || '',
     includes: Array.isArray(t.includes) ? t.includes : (t.includes ? String(t.includes).split(',').map(s => s.trim()).filter(Boolean) : []),
@@ -1465,22 +1568,58 @@ async function checkUserSession(){
   const sessionUser = await checkActiveAuthUser();
   const btn = document.getElementById('authNavBtn');
   if(btn){
-    if(sessionUser){
+    if(sessionUser && isStaffEmail(sessionUser.email)){
+      btn.innerHTML = '<span class="auth-label-full">Operations</span><span class="auth-label-short">Ops</span>';
+      // Keep staff session fresh while logged into Supabase
+      if(!isValidAdminSession()){
+        try {
+          const token = crypto.getRandomValues(new Uint8Array(16));
+          const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
+          sessionStorage.setItem('feelit_admin_session', JSON.stringify({
+            t: Date.now(), k: tokenHex, email: sessionUser.email.toLowerCase()
+          }));
+        } catch(e){}
+      }
+    } else if(sessionUser){
       btn.innerHTML = '<span class="auth-label-full">My Account</span><span class="auth-label-short">Account</span>';
     } else {
       btn.innerHTML = '<span class="auth-label-full">Login / Account</span><span class="auth-label-short">Login</span>';
     }
   }
-  renderContactSection(); // keep the homepage Contact section in sync with login state
+  renderContactSection();
 }
 
-async function openAuthModal(){
+
+function isStaffEmail(email){
+  if(!email) return false;
+  const e = String(email).toLowerCase().trim();
+  return STAFF_EMAILS.some(s => s.toLowerCase() === e);
+}
+
+async function openStaffOrDashboard(){
   const sessionUser = await checkActiveAuthUser();
-  if(sessionUser){
-    renderUserDashboard(sessionUser);
-  } else {
-    showAuthTabs('login');
+  if(!sessionUser){ showAuthTabs('login'); return; }
+  if(isStaffEmail(sessionUser.email)){
+    // Ensure staff session flag exists
+    if(!isValidAdminSession()){
+      try {
+        const token = crypto.getRandomValues(new Uint8Array(16));
+        const tokenHex = Array.from(token).map(b => b.toString(16).padStart(2,'0')).join('');
+        sessionStorage.setItem('feelit_admin_session', JSON.stringify({
+          t: Date.now(), k: tokenHex, email: sessionUser.email.toLowerCase()
+        }));
+      } catch(e){}
+    }
+    renderAdminPanel('bookings');
+    return;
   }
+  renderUserDashboard(sessionUser);
+}
+
+
+async function openAuthModal(){
+  // Staff → Operations panel; customers → My Account
+  await openStaffOrDashboard();
 }
 
 function showAuthTabs(mode = 'login'){
@@ -1588,11 +1727,15 @@ async function renderUserDashboard(user){
     });
   } catch(e){}
 
+  const staffBtn = isStaffEmail(user.email)
+    ? `<button class="btn btn-primary" type="button" onclick="renderAdminPanel('bookings')">Open Operations panel</button>`
+    : '';
   document.getElementById('modalContent').innerHTML = `
     <button class="modal-close" onclick="closeOverlay()">&times;</button>
-    <h2>User Dashboard</h2>
+    <h2>${isStaffEmail(user.email) ? 'Staff account' : 'User Dashboard'}</h2>
     <p class="sub">Welcome back, <strong>${esc(user.name)}</strong> (${esc(user.email)})</p>
-    <div style="margin-bottom:24px;">
+    <div style="margin-bottom:24px;display:flex;flex-wrap:wrap;gap:10px;">
+      ${staffBtn}
       <button class="btn btn-outline" onclick="handleUserLogout()">Logout</button>
     </div>
     <h3>My rides</h3>
