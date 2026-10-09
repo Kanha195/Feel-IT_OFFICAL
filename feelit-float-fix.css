@@ -1,0 +1,5 @@
+/* Ensure WA + IG floats stay visible above cookie banner */
+.float-socials{z-index:90 !important;pointer-events:none;}
+.float-socials a{pointer-events:auto;display:flex !important;opacity:1 !important;visibility:visible !important;}
+.float-wa{background:#25D366 !important;}
+.cookie-banner{z-index:80;}
