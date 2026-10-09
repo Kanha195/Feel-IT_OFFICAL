@@ -4,19 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operations · Feel It</title>
+  <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root{--void:#0B0F19;--teal:#00F5D4;--gold:#FFB703;--panel:#121826;--line:rgba(0,245,212,.16);--ink:#F4F7FB;--muted:#9AA6B8;--danger:#f87171;}
     *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--void);color:var(--ink);font-family:"Work Sans",system-ui,sans-serif}
     h1,h2,h3{font-family:"Bebas Neue",sans-serif;letter-spacing:.04em;font-weight:400;margin:0}
-    .app{display:grid;grid-template-columns:240px 1fr;min-height:100%}
-    nav{background:#0e1422;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:6px}
-    nav .logo{color:var(--teal);font-size:28px;padding:4px 10px 16px}
-    nav button{background:transparent;border:0;color:#c9d4e5;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px}
-    nav button.active, nav button:hover{background:rgba(0,245,212,.12);color:var(--teal)}
+    .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+    nav{background:#0e1422;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow:auto}
+    nav .logo{color:var(--teal);font-size:28px;padding:4px 10px 8px}
+    nav .role-tag{font-size:11px;color:var(--muted);padding:0 10px 14px}
+    nav button{background:transparent;border:0;color:#c9d4e5;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;width:100%}
+    nav button.active,nav button:hover{background:rgba(0,245,212,.12);color:var(--teal)}
+    nav button:disabled{opacity:.35;cursor:not-allowed}
+    nav .nav-foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;gap:6px}
     main{padding:20px;overflow:auto}
-    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
     .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
     .kpi b{display:block;font-size:26px;color:var(--teal)}
     .kpi span{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
@@ -27,39 +31,70 @@
     .pill.warn{background:rgba(248,113,113,.15);color:var(--danger)}
     .pill.live{background:#00F5D4;color:#04120f}
     input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0d1320;color:#fff;margin:4px 0 10px}
-    label{font-size:12px;color:var(--muted)}
-    .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700}
+    label{font-size:12px;color:var(--muted);display:block}
+    .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px}
     .btn-p{background:var(--teal);color:#04120f}
     .btn-g{background:transparent;color:var(--teal);border:1px solid var(--line)}
     .btn-d{background:transparent;color:var(--danger);border:1px solid rgba(248,113,113,.35)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     #fleetMap,#deskMap{height:420px;border-radius:14px}
     .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#134e4a;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:50}
-    @media(max-width:900px){.app{grid-template-columns:1fr}.kpis,.grid2{grid-template-columns:1fr} nav{flex-direction:row;flex-wrap:wrap;overflow:auto}}
+    .login-wrap{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .login-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px}
+    .login-card h1{color:var(--teal);margin-bottom:6px}
+    .perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+    .perm-grid label{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px}
+    .perm-grid input{width:auto;margin:0}
+    .chk{display:flex;gap:8px;align-items:center;margin:6px 0;color:var(--ink);font-size:13px}
+    .chk input{width:auto;margin:0}
+    .muted{color:var(--muted);font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
+    th{color:var(--muted);font-size:11px;text-transform:uppercase}
+    @media(max-width:900px){.app{grid-template-columns:1fr}nav{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}.kpis,.grid2,.perm-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <div class="app">
+  <div id="loginGate" class="login-wrap">
+    <div class="login-card">
+      <h1>Feel It Ops</h1>
+      <p class="muted">Staff sign-in. Guests use the main website.</p>
+      <label>Email</label>
+      <input id="opsEmail" type="email" autocomplete="username" placeholder="you@email.com">
+      <label>Password</label>
+      <input id="opsPass" type="password" autocomplete="current-password">
+      <button class="btn btn-p" id="opsLoginBtn" style="width:100%;margin-top:8px">Login</button>
+      <p id="opsLoginErr" class="muted" style="color:var(--danger);display:none;margin-top:10px"></p>
+      <p class="muted" style="margin-top:16px"><a href="index.html" style="color:var(--teal)">← Guest site</a></p>
+    </div>
+  </div>
+  <div id="opsApp" class="app" hidden>
     <nav>
       <div class="logo">Feel It Ops</div>
-      <button class="active" data-v="home">Overview</button>
+      <div class="role-tag" id="roleTag">—</div>
+      <button data-v="home" class="active">Overview</button>
       <button data-v="bookings">Bookings</button>
-      <button data-v="live">Live fleet map</button>
+      <button data-v="live">Live fleet</button>
       <button data-v="riders">Captain roster</button>
       <button data-v="apps">Applications</button>
       <button data-v="messages">Messages</button>
       <button data-v="tours">Tours</button>
-      <button data-v="money">Costs</button>
-      <a href="rider.html" style="color:var(--gold);padding:10px 12px;font-size:13px;text-decoration:none">Captain console</a>
-      <a href="index.html" style="color:var(--muted);padding:10px 12px;font-size:13px;text-decoration:none">Guest site</a>
-      <button data-v="out" style="margin-top:auto;color:var(--danger)">Logout</button>
+      <button data-v="featured">Featured & crop</button>
+      <button data-v="money">Costs & splits</button>
+      <button data-v="settings">Site settings</button>
+      <button data-v="staff">Staff access</button>
+      <div class="nav-foot">
+        <a href="rider.html" style="color:var(--gold);padding:8px 12px;font-size:13px;text-decoration:none">Captain console</a>
+        <a href="index.html" style="color:var(--muted);padding:8px 12px;font-size:13px;text-decoration:none">Guest site</a>
+        <button data-v="out" style="color:var(--danger)">Logout</button>
+      </div>
     </nav>
     <main>
       <div class="row" style="margin-bottom:12px">
         <h1 id="viewTitle">Overview</h1>
-        <span id="who" style="color:var(--muted);font-size:13px"></span>
+        <span id="who" class="muted"></span>
       </div>
-      <div id="stage">Checking access…</div>
+      <div id="stage">Loading…</div>
     </main>
   </div>
   <div class="toast" id="toast"></div>
