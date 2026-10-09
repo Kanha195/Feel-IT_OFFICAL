@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Captain console · Feel It</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --void:#0B0F19; --teal:#00F5D4; --gold:#FFB703; --ink:#F4F7FB; --muted:#9AA6B8; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; min-height:100%; background:#0B0F19; color:#F4F7FB; font-family:"Work Sans",system-ui,sans-serif; }
+    h1,h2,h3 { font-family:"Bebas Neue",sans-serif; letter-spacing:.04em; font-weight:400; }
+    .wrap { max-width:1100px; margin:0 auto; padding:20px 16px 40px; }
+    .brand { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .brand a { color:var(--teal); text-decoration:none; font-size:13px; }
+    .glass { background:rgba(18,24,38,.72); backdrop-filter:blur(16px); border:1px solid rgba(0,245,212,.18); border-radius:18px; padding:18px; }
+    .field { margin:12px 0; }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#0d1320; color:#fff; }
+    .btn { cursor:pointer; border:0; border-radius:10px; padding:12px 16px; font-weight:700; }
+    .btn-primary { background:var(--teal); color:#04120f; width:100%; }
+    .btn-ghost { background:transparent; color:var(--teal); border:1px solid rgba(0,245,212,.3); }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0; }
+    .stat { background:rgba(0,245,212,.08); border-radius:12px; padding:12px; }
+    .stat b { display:block; font-size:22px; color:var(--teal); }
+    .stat span { font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+    #capMap { height:360px; border-radius:16px; overflow:hidden; margin-top:12px; }
+    .brief p { margin:6px 0; color:#d7deea; font-size:14px; line-height:1.5; }
+    @media (max-width:700px){ .stats { grid-template-columns:1fr 1fr; } #capMap{height:280px;} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <h1 style="margin:0;font-size:34px;color:var(--teal);">Feel It</h1>
+      <a href="index.html">Guest site</a>
+    </div>
+    <p style="color:var(--muted);margin:4px 0 20px;">Captain console</p>
+
+    <section id="gate" class="glass">
+      <h2 style="margin-top:0;">Sign in to your ride</h2>
+      <div class="field"><label>Booking reference</label><input id="ref" placeholder="FEEL-XXXXXX" autocomplete="off"></div>
+      <div class="field"><label>Your phone (as assigned)</label><input id="phone" placeholder="98xxxxxxxx" inputmode="tel"></div>
+      <button class="btn btn-primary" id="go">Open console</button>
+      <p id="err" style="color:#f87171;display:none;margin-top:10px;"></p>
+    </section>
+
+    <section id="desk" hidden>
+      <div class="glass">
+        <div class="brand">
+          <div>
+            <h2 id="title" style="margin:0;"></h2>
+            <p id="meta" style="margin:4px 0 0;color:var(--muted);"></p>
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="location.reload()">Sign out</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="stKm">—</b><span>Remaining km</span></div>
+          <div class="stat"><b id="stFuel">—</b><span>Fuel needed</span></div>
+          <div class="stat"><b id="stEta">—</b><span>Time left</span></div>
+        </div>
+        <div id="capMap"></div>
+        <p style="font-size:12px;color:var(--muted);">Live pin updates from ops or your GPS. Refreshes every 12 seconds.</p>
+      </div>
+      <div class="glass brief" style="margin-top:14px;">
+        <h3 style="margin-top:0;color:var(--gold);">Briefing</h3>
+        <div id="brief"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const SB = window.supabase.createClient(
+      'https://gsjkexvchfozviqllpvq.supabase.co',
+      'sb_publishable_G6Su-3CqSjBJaVdRuYwfMw_dDTE2S8s'
+    );
+    let map, liveMarker, startM, destM, line, poll, currentId;
+
+    function digits(s){ return String(s||'').replace(/\D/g,''); }
+    function hav(a,b,c,d){
+      if(!a||!c) return 0;
+      const R=6371, x=(c-a)*Math.PI/180, y=(d-b)*Math.PI/180;
+      const q=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
+      return R*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
+    }
+    function packOf(b){
+      try { return typeof b.ride_details==='string' ? JSON.parse(b.ride_details||'{}') : (b.ride_details||{}); }
+      catch(e){ return {}; }
+    }
+
+    document.getElementById('go').onclick = async () => {
+      const ref = document.getElementById('ref').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const err = document.getElementById('err');
+      err.style.display='none';
+      if(!ref || !phone){ err.textContent='Enter both fields.'; err.style.display='block'; return; }
+      const { data, error } = await SB.rpc('captain_board', { p_ref: ref, p_phone: phone });
+      if(error || !data){
+        err.textContent='No ride found for that reference and phone.';
+        err.style.display='block';
+        return;
+      }
+      currentId = data.id;
+      window._cap = { ref, phone };
+      document.getElementById('gate').hidden = true;
+      document.getElementById('desk').hidden = false;
+      paint(data);
+      poll = setInterval(refresh, 12000);
+      if(navigator.geolocation){
+        navigator.geolocation.watchPosition(pos => {
+          SB.rpc('captain_ping', { p_ref: ref, p_phone: phone, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude });
+        }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+      }
+    };
+
+    async function refresh(){
+      if(!window._cap) return;
+      const { data } = await SB.rpc('captain_board', { p_ref: window._cap.ref, p_phone: window._cap.phone });
+      if(data) paint(data);
+    }
+
+    function paint(b){
+      const p = packOf(b);
+      document.getElementById('title').textContent = b.tour_title || 'Ride';
+      document.getElementById('meta').textContent = `${b.date||''} · Guest ${b.name||''} · Status ${b.status||''}`;
+      const liveLat = p.live_lat || p.start_lat || 27.7172;
+      const liveLng = p.live_lng || p.start_lng || 85.324;
+      const remain = (p.dest_lat) ? hav(liveLat, liveLng, p.dest_lat, p.dest_lng) : (Number(p.km)||0);
+      const kph = Number(p.avg_kph)||35;
+      const lph = Number(p.fuel_lph)||3.2;
+      const mins = kph ? Math.round((remain/kph)*60) : 0;
+      document.getElementById('stKm').textContent = remain.toFixed(1);
+      document.getElementById('stFuel').textContent = (remain*(lph/100)).toFixed(1)+' L';
+      document.getElementById('stEta').textContent = mins ? (mins>=60 ? Math.floor(mins/60)+'h '+(mins%60)+'m' : mins+' min') : '—';
+      const bits = [];
+      if(p.meeting_point) bits.push(`<p><strong>Meet</strong> ${p.meeting_point} ${p.meeting_time||''}</p>`);
+      if(p.pickup) bits.push(`<p><strong>Pickup</strong> ${p.pickup}</p>`);
+      if(p.itinerary) bits.push(`<p><strong>Route</strong><br>${String(p.itinerary).replace(/\n/g,'<br>')}</p>`);
+      if(p.meals) bits.push(`<p><strong>Food</strong><br>${String(p.meals).replace(/\n/g,'<br>')}</p>`);
+      if(Array.isArray(p.stops) && p.stops.length) bits.push('<p><strong>Stops</strong><br>'+p.stops.map(s => (s.name||'Stop')+(s.note? ' — '+s.note : '')).join('<br>')+'</p>');
+      if(p.notes) bits.push(`<p><strong>Notes</strong><br>${String(p.notes).replace(/\n/g,'<br>')}</p>`);
+      document.getElementById('brief').innerHTML = bits.join('') || '<p>Waiting for operations to publish the briefing.</p>';
+
+      if(!map){
+        map = L.map('capMap').setView([liveLat, liveLng], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM' }).addTo(map);
+      }
+      if(startM) map.removeLayer(startM);
+      if(destM) map.removeLayer(destM);
+      if(liveMarker) map.removeLayer(liveMarker);
+      if(line) map.removeLayer(line);
+      if(p.start_lat) startM = L.marker([p.start_lat,p.start_lng]).addTo(map).bindPopup(p.start_name||'Start');
+      if(p.dest_lat) destM = L.marker([p.dest_lat,p.dest_lng]).addTo(map).bindPopup(p.dest_name||'Destination');
+      liveMarker = L.circleMarker([liveLat, liveLng], { radius:10, color:'#00F5D4', fillColor:'#00F5D4', fillOpacity:.85 }).addTo(map).bindPopup('Live');
+      if(p.start_lat && p.dest_lat){
+        line = L.polyline([[p.start_lat,p.start_lng],[liveLat,liveLng],[p.dest_lat,p.dest_lng]], { color:'#FFB703', weight:3 }).addTo(map);
+        map.fitBounds(line.getBounds(), { padding:[24,24] });
+      } else {
+        map.setView([liveLat, liveLng], 11);
+      }
+    }
+  </script>
+</body>
+</html>

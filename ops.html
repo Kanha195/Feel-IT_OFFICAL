@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operations · Feel It</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--void:#0B0F19;--teal:#00F5D4;--gold:#FFB703;--panel:#121826;--line:rgba(0,245,212,.16);--ink:#F4F7FB;--muted:#9AA6B8;--danger:#f87171;}
+    *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--void);color:var(--ink);font-family:"Work Sans",system-ui,sans-serif}
+    h1,h2,h3{font-family:"Bebas Neue",sans-serif;letter-spacing:.04em;font-weight:400;margin:0}
+    .app{display:grid;grid-template-columns:240px 1fr;min-height:100%}
+    nav{background:#0e1422;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:6px}
+    nav .logo{color:var(--teal);font-size:28px;padding:4px 10px 16px}
+    nav button{background:transparent;border:0;color:#c9d4e5;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px}
+    nav button.active, nav button:hover{background:rgba(0,245,212,.12);color:var(--teal)}
+    main{padding:20px;overflow:auto}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+    .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .kpi b{display:block;font-size:26px;color:var(--teal)}
+    .kpi span{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+    .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(255,183,3,.15);color:var(--gold)}
+    .pill.ok{background:rgba(0,245,212,.15);color:var(--teal)}
+    .pill.warn{background:rgba(248,113,113,.15);color:var(--danger)}
+    .pill.live{background:#00F5D4;color:#04120f}
+    input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0d1320;color:#fff;margin:4px 0 10px}
+    label{font-size:12px;color:var(--muted)}
+    .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700}
+    .btn-p{background:var(--teal);color:#04120f}
+    .btn-g{background:transparent;color:var(--teal);border:1px solid var(--line)}
+    .btn-d{background:transparent;color:var(--danger);border:1px solid rgba(248,113,113,.35)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    #fleetMap,#deskMap{height:420px;border-radius:14px}
+    .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#134e4a;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:50}
+    @media(max-width:900px){.app{grid-template-columns:1fr}.kpis,.grid2{grid-template-columns:1fr} nav{flex-direction:row;flex-wrap:wrap;overflow:auto}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav>
+      <div class="logo">Feel It Ops</div>
+      <button class="active" data-v="home">Overview</button>
+      <button data-v="bookings">Bookings</button>
+      <button data-v="live">Live fleet map</button>
+      <button data-v="riders">Captain roster</button>
+      <button data-v="apps">Applications</button>
+      <button data-v="messages">Messages</button>
+      <button data-v="tours">Tours</button>
+      <button data-v="money">Costs</button>
+      <a href="rider.html" style="color:var(--gold);padding:10px 12px;font-size:13px;text-decoration:none">Captain console</a>
+      <a href="index.html" style="color:var(--muted);padding:10px 12px;font-size:13px;text-decoration:none">Guest site</a>
+      <button data-v="out" style="margin-top:auto;color:var(--danger)">Logout</button>
+    </nav>
+    <main>
+      <div class="row" style="margin-bottom:12px">
+        <h1 id="viewTitle">Overview</h1>
+        <span id="who" style="color:var(--muted);font-size:13px"></span>
+      </div>
+      <div id="stage">Checking access…</div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="ops.js"></script>
+</body>
+</html>
