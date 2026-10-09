@@ -20,7 +20,7 @@ const PERM_LABELS = {
 
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[c]));
+const esc = (s) => String(s==null?'':s).split('&').join('&'+'amp;').split('<').join('&'+'lt;').split('>').join('&'+'gt;').split('"').join('&'+'quot;').split("'").join('&'+'#39;');
 const toast = (m) => { const t=$('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
 const digits = (s) => String(s||'').replace(/\D/g,'');
 
