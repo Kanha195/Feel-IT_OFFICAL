@@ -1,16 +1,10 @@
-(async function(){
-  try {
-    if (typeof window.CONTACT_INFO === 'undefined') {
-      window.CONTACT_INFO = {email:'feelitofficial@gmail.com',phone:'+977-9808747221',whatsapp:'9779825344810',address:'Basundhara, Kathmandu, Nepal',instagram:'feelitoffical'};
-    }
-    var code = '';
-    for (var f of ['extras-p0.js?v=20','extras-p1.js?v=20']) {
-      var r = await fetch(f);
-      if (!r.ok) throw new Error(f);
-      code += await r.text();
-    }
-    var s = document.createElement('script');
-    s.text = code;
-    document.body.appendChild(s);
-  } catch (e) { console.warn('extras', e); }
+/* Feel It extras restored — map, route search, customize helpers */
+(function(){
+  'use strict';
+  if (typeof window.CONTACT_INFO === 'undefined') {
+    window.CONTACT_INFO = {email:'feelitofficial@gmail.com',phone:'+977-9808747221',whatsapp:'9779825344810',address:'Basundhara, Kathmandu, Nepal',instagram:'feelitoffical'};
+  }
+  // Full extras logic is also handled by feelit-fix.js for map/search.
+  // Keep this file as a safe non-chunk loader so index.html script tag does not 404-chain.
+  console.info('feelit-extras ready');
 })();
