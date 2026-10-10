@@ -2,51 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feel It | Guided Bike Tours in Nepal</title>
   <link rel="icon" type="image/png" href="assets/unnamed.png">
-  <link rel="apple-touch-icon" href="assets/unnamed.png">
-  <meta name="description" content="Feel It pairs solo travelers with local riders who know Nepal's mountain roads.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="feelit-cards.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
-  <p style="padding:24px;font-family:system-ui">If this stays, your host is serving a cached page. Hard refresh (Ctrl+Shift+R).</p>
   <script>
-  /* Emergency: if full HTML was truncated in push, load complete shell */
-  (async function(){
-    if (document.querySelectorAll('section').length > 2) return;
+  (async function () {
     try {
-      var r = await fetch('https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html', {cache:'no-store'});
+      var r = await fetch(
+        'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html',
+        { cache: 'no-store' }
+      );
       var html = await r.text();
-      html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi,'');
-      html = html.replace(/id="tourGrid"/g,'id="toursGrid"');
+      if (!html || html.length < 5000) throw new Error('shell empty');
+
+      html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi, '');
+      html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
+      html = html.replace(/id="tourGrid"/g, 'id="toursGrid"');
+
       if (html.indexOf('feelit-cards.css') < 0) {
-        html = html.replace('href="style.css"', 'href="style.css">\n  <link rel="stylesheet" href="feelit-cards.css"');
+        html = html.replace(
+          'href="style.css"',
+          'href="style.css">' + '<' + 'link rel="stylesheet" href="feelit-cards.css"'
+        );
       }
+      if (html.indexOf('ride.html') < 0) {
+        html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
+      }
+
+      // Ensure auth refine + fix load after hero
       if (html.indexOf('feelit-auth-refine.js') < 0) {
-        html = html.replace('feelit-preloader.js', 'feelit-auth-refine.js"></script>\n<script src="feelit-preloader.js');
+        html = html.replace(
+          'src="feelit-preloader.js"',
+          'src="feelit-auth-refine.js"></script><script src="feelit-preloader.js"'
+        );
       }
-      document.open(); document.write(html); document.close();
-    } catch(e) {
-      document.body.innerHTML = '<p style="padding:40px">Load error. <a href="ops.html">Ops</a></p>';
+      if (html.indexOf('feelit-fix.js') < 0) {
+        html = html.replace(
+          'src="feelit-hero.js"',
+          'src="feelit-fix.js"></script><script src="feelit-hero.js"'
+        );
+      }
+
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (e) {
+      document.body.innerHTML =
+        '<p style="font-family:system-ui;padding:40px">Could not load site. ' +
+        '<a href="ops.html">Ops</a> · ' + e + '</p>';
     }
   })();
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script src="script.js"></script>
-  <script src="feelit-extras.js"></script>
-  <script src="feelit-config.js"></script>
-  <script src="feelit-weather.js"></script>
-  <script src="feelit-features.js"></script>
-  <script src="feelit-fix.js"></script>
-  <script src="feelit-auth-refine.js"></script>
-  <script src="feelit-hero.js"></script>
-  <script src="feelit-preloader.js"></script>
+</head>
+<body>
+  <p style="font-family:system-ui;padding:24px;color:#666">Loading Feel It…</p>
 </body>
 </html>
