@@ -1,5 +1,6 @@
-/* Feel It bootstrap — core from CDN (CSP removed) */
-(function(){
+/* Feel It — full core loader + tour photo / grid patches */
+(function () {
+  'use strict';
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {
       email: 'feelitofficial@gmail.com',
@@ -9,26 +10,15 @@
       instagram: 'feelitoffical'
     };
   }
-  try {
-    var l = document.createElement('link');
-    l.rel = 'stylesheet';
-    l.href = 'feelit-float-fix.css';
-    document.head.appendChild(l);
-  } catch (e) {}
 
-  function applyPatches(){
+  function applyTourPatches() {
     try {
-      if (typeof PAYMENT_METHODS !== 'undefined') {
-        if (PAYMENT_METHODS.bank) {
-          PAYMENT_METHODS.bank.qrImage = 'assets/qr-bank.png';
-          PAYMENT_METHODS.bank.accountNumber = 'Use QR or ask on WhatsApp';
-        }
-        if (PAYMENT_METHODS.esewa) PAYMENT_METHODS.esewa.qrImage = 'assets/qr-esewa.png';
-      }
       if (typeof normalizeTour === 'function') {
         var _n = normalizeTour;
-        window.normalizeTour = function(t){
+        window.normalizeTour = function (t) {
           var x = _n(t);
+          var img = x.imageUrl || x.image_url || x.image || x.photo || x.cover || '';
+          x.imageUrl = img || 'assets/1.png';
           var g = String(x.guide || '').toLowerCase();
           if (!g.trim() || /rider will|will be assigned|assign after|payment received|to be assigned|tbd|pending/.test(g)) {
             x.guide = 'Assigned after payment';
@@ -36,60 +26,100 @@
           return x;
         };
       }
-      window.openTermsModal = function(){
-        var mc = document.getElementById('modalContent');
-        if (!mc) { location.href = 'terms.html'; return; }
-        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until payment is verified. Captain and briefing appear in My Account after confirmation.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
-        if (typeof showOverlay === 'function') showOverlay();
+
+      window.cardHtml = function (t, gem) {
+        var src = (t && (t.imageUrl || t.image || t.photo)) || 'assets/1.png';
+        var title = (typeof esc === 'function' ? esc(t.title || '') : String(t.title || ''));
+        var region = (typeof esc === 'function' ? esc(t.region || '') : String(t.region || ''));
+        var duration = (typeof esc === 'function' ? esc(t.duration || '') : String(t.duration || ''));
+        var guide = (typeof esc === 'function' ? esc(t.guide || 'Assigned after payment') : 'Assigned after payment');
+        var id = (typeof esc === 'function' ? esc(String(t.id)) : String(t.id));
+        var price = (typeof fmtNPR === 'function' ? fmtNPR(t.price) : ('NPR ' + (t.price || 0)));
+        var priceL = (typeof fmtNPR === 'function' ? fmtNPR(t.price_local) : ('NPR ' + (t.price_local || 0)));
+        var art = (typeof imgTag === 'function')
+          ? imgTag(src, t.title, 'card-photo', 'style="object-fit:cover;width:100%;height:100%;" onerror="this.onerror=null;this.src=\'assets/1.png\'"')
+          : '<img class="card-photo" src="' + src + '" alt="' + title + '" style="object-fit:cover;width:100%;height:100%;" onerror="this.onerror=null;this.src=\'assets/1.png\'">';
+        return '<article class="card tour-card">' +
+          '<div class="card-art" style="overflow:hidden;aspect-ratio:16/10;">' +
+          (gem ? '<span class="gem-badge">Hidden Gem</span>' : '') + art +
+          '</div><div class="card-body">' +
+          '<div class="card-region">' + region + '</div>' +
+          '<h3 class="card-title">' + title + '</h3>' +
+          '<div class="card-meta"><span>' + duration + '</span><span>' + guide + '</span></div>' +
+          '<div class="card-price dual-price">' +
+          '<span class="price-foreign">' + price + ' <small>foreigner</small></span>' +
+          '<span class="price-local">' + priceL + ' <small>local</small></span>' +
+          '</div>' +
+          '<button type="button" class="btn btn-primary" onclick="openTour(\'' + id + '\')">View &amp; book</button>' +
+          '</div></article>';
       };
-      if (Array.isArray(window.tours) && window.tours.length) {
-        window.tours = window.tours.map(window.normalizeTour || function(t){ return t; });
-        if (typeof renderTours === 'function') renderTours();
-        if (typeof renderHiddenGems === 'function') renderHiddenGems();
-      }
-      window.openAuthModal = async function(){
+
+      window.renderTours = function () {
+        var box = document.getElementById('toursGrid') || document.getElementById('tourGrid') || document.querySelector('#tours .grid');
+        if (!box) return;
+        var list = [];
         try {
-          var sessionUser = (typeof checkActiveAuthUser === 'function') ? await checkActiveAuthUser() : null;
-          if (sessionUser && typeof isStaffEmail === 'function' && isStaffEmail(sessionUser.email)) {
-            if (typeof writeStaffSession === 'function') writeStaffSession(sessionUser.email);
-            window.location.href = 'ops.html';
-            return;
-          }
-          if (sessionUser && typeof renderUserDashboard === 'function') {
-            renderUserDashboard(sessionUser);
-            return;
-          }
-          try {
-            var raw = sessionStorage.getItem('feelit_admin_session');
-            if (raw && !sessionUser) sessionStorage.removeItem('feelit_admin_session');
-          } catch (e) {}
-          if (typeof showAuthTabs === 'function') showAuthTabs('login');
-        } catch (err) {
-          if (typeof showAuthTabs === 'function') showAuthTabs('login');
-        }
+          if (typeof tours !== 'undefined' && Array.isArray(tours)) list = tours.filter(function (t) { return !t.hidden_gem; });
+        } catch (e) {}
+        if (!list.length && Array.isArray(window.feelitTours)) list = window.feelitTours.filter(function (t) { return !t.hidden_gem; });
+        box.innerHTML = list.length ? list.map(function (t) { return window.cardHtml(t, false); }).join('') : '<div class="empty-state">Tours coming soon.</div>';
       };
-      window.openStaffOrDashboard = window.openAuthModal;
-    } catch (e) { console.warn('patches', e); }
+
+      window.renderHiddenGems = function () {
+        var el = document.getElementById('hiddenGemsGrid') || document.getElementById('hiddenGems');
+        if (!el) return;
+        var list = [];
+        try {
+          if (typeof tours !== 'undefined' && Array.isArray(tours)) list = tours.filter(function (t) { return t.hidden_gem; });
+        } catch (e) {}
+        if (!list.length && Array.isArray(window.feelitTours)) list = window.feelitTours.filter(function (t) { return t.hidden_gem; });
+        el.innerHTML = list.length ? list.map(function (t) { return window.cardHtml(t, true); }).join('') : '<div class="empty-state">Hidden gems coming soon.</div>';
+      };
+
+      try {
+        if (typeof tours !== 'undefined' && Array.isArray(tours) && tours.length) {
+          for (var i = 0; i < tours.length; i++) {
+            if (typeof window.normalizeTour === 'function') tours[i] = window.normalizeTour(tours[i]);
+          }
+          window.feelitTours = tours.slice();
+        }
+      } catch (e) {}
+      if (typeof window.renderTours === 'function') window.renderTours();
+      if (typeof window.renderHiddenGems === 'function') window.renderHiddenGems();
+
+      var btn = document.getElementById('authNavBtn');
+      if (btn) btn.textContent = 'Login / Account';
+    } catch (e) {
+      console.warn('tour patches', e);
+    }
   }
 
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js';
-  s.onload = function(){
-    applyPatches();
-    setTimeout(applyPatches, 800);
-    setTimeout(applyPatches, 2500);
-  };
-  s.onerror = function(){
-    fetch('https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js')
-      .then(function(r){ return r.text(); })
-      .then(function(code){
-        var t = document.createElement('script');
-        t.text = code;
-        document.head.appendChild(t);
-        applyPatches();
-        setTimeout(applyPatches, 800);
-      })
-      .catch(function(e){ console.error('Core script load failed', e); });
-  };
-  document.head.appendChild(s);
+  function loadCore(code) {
+    var s = document.createElement('script');
+    s.text = code;
+    document.head.appendChild(s);
+    applyTourPatches();
+    setTimeout(applyTourPatches, 600);
+    setTimeout(applyTourPatches, 2000);
+  }
+
+  var urls = [
+    'script-core.js',
+    'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js'
+  ];
+  (async function () {
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var r = await fetch(urls[i], { cache: 'no-store' });
+        if (r.ok) {
+          var code = await r.text();
+          if (code && code.length > 10000 && code.indexOf('function cardHtml') >= 0) {
+            loadCore(code);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+    console.error('Could not load core script.js');
+  })();
 })();

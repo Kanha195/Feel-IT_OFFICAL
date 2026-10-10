@@ -1,0 +1,29 @@
+/* feelit-cards.css — tour cards photos, no text merge */
+.card.tour-card, #toursGrid .card, #hiddenGemsGrid .card {
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+}
+.card-art {
+  position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; background: #0d1320;
+}
+.card-art img.card-photo, .card-photo {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.card-body {
+  padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.card-title { margin: 0; line-height: 1.25; font-size: 1.15rem; overflow-wrap: anywhere; }
+.card-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; opacity: 0.85; }
+.card-price.dual-price { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.card-price small { opacity: 0.7; font-weight: 500; }
+.gem-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 11px;
+  padding: 4px 8px; border-radius: 999px; background: rgba(255,183,3,.9); color: #111; font-weight: 700;
+}
+#toursGrid, #hiddenGemsGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+}
+#authNavBtn { white-space: nowrap; }
+.route-search-item {
+  display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.08); background: #121826; color: #fff; cursor: pointer;
+}
