@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operations · Feel It</title>
   <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" href="assets/unnamed.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -17,7 +18,6 @@
     nav .role-tag{font-size:11px;color:var(--muted);padding:0 10px 14px}
     nav button{background:transparent;border:0;color:#c9d4e5;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;width:100%}
     nav button.active,nav button:hover{background:rgba(0,245,212,.12);color:var(--teal)}
-    nav button:disabled{opacity:.35;cursor:not-allowed}
     nav .nav-foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;gap:6px}
     main{padding:20px;overflow:auto}
     .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
@@ -31,35 +31,25 @@
     label{font-size:12px;color:var(--muted);display:block}
     .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px}
     .btn-p{background:var(--teal);color:#04120f}
-    .btn-d{background:transparent;color:var(--danger);border:1px solid rgba(248,113,113,.35)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     #fleetMap,#deskMap{height:420px;border-radius:14px}
     .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#134e4a;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:50}
     .toast.show{display:block}
-    .login-wrap{min-height:100vh;display:grid;place-items:center;padding:24px}
-    .login-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px}
-    .login-card h1{color:var(--teal);margin-bottom:6px}
+    .muted{color:var(--muted);font-size:13px}
+    .gate{min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}
+    .gate a{color:var(--teal)}
     .perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
     .perm-grid label{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px}
     .perm-grid input{width:auto;margin:0}
-    .chk{display:flex;gap:8px;align-items:center;margin:6px 0;color:var(--ink);font-size:13px}
-    .chk input{width:auto;margin:0}
-    .muted{color:var(--muted);font-size:13px}
     @media(max-width:900px){.app{grid-template-columns:1fr}nav{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}.kpis,.grid2,.perm-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <div id="loginGate" class="login-wrap">
-    <div class="login-card">
-      <h1>Feel It Ops</h1>
-      <p class="muted">Staff sign-in. Guests use the main website.</p>
-      <label>Email</label>
-      <input id="opsEmail" type="email" autocomplete="username" placeholder="you@email.com">
-      <label>Password</label>
-      <input id="opsPass" type="password" autocomplete="current-password">
-      <button class="btn btn-p" id="opsLoginBtn" style="width:100%;margin-top:8px">Login</button>
-      <p id="opsLoginErr" class="muted" style="color:var(--danger);display:none;margin-top:10px"></p>
-      <p class="muted" style="margin-top:16px"><a href="index.html" style="color:var(--teal)">← Guest site</a></p>
+  <div id="opsGate" class="gate">
+    <div>
+      <h1 style="color:var(--teal);margin-bottom:8px">Feel It</h1>
+      <p class="muted" id="opsGateMsg">Checking access…</p>
+      <p class="muted" style="margin-top:16px"><a href="index.html">← Back to site</a></p>
     </div>
   </div>
   <div id="opsApp" class="app" hidden>
@@ -94,7 +84,9 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="ops-core.js?v=13"></script>
-  <script src="ops-features.js?v=1"></script>
+  <script src="ops-gate.js"></script>
+  <script src="ops-core.js?v=14"></script>
+  <script src="ops-features.js?v=2"></script>
+  <script src="ops-staff.js"></script>
 </body>
 </html>
