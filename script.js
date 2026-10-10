@@ -1,6 +1,5 @@
-/* Feel It — bootstrap: last good core + live fixes */
+/* Feel It — bootstrap: load core via <script src> (CSP blocks fetch to CDN) */
 (function(){
-  // Define CONTACT_INFO immediately so feelit-extras.js never crashes
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {
       email: 'feelitofficial@gmail.com',
@@ -40,7 +39,7 @@
       window.openTermsModal = function(){
         var mc = document.getElementById('modalContent');
         if (!mc) { location.href = 'terms.html'; return; }
-        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until we verify your bank or eSewa payment. After verification we assign a local captain and publish your ride briefing in My Account.</p><p>Wear the supplied helmet and gear. Follow your captain on the road.</p><p>If we cannot verify payment or provide a captain, we will refund or reschedule. See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
+        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until we verify payment. After verification we assign a captain and publish your ride briefing in My Account.</p><p>Wear the supplied helmet and gear. Follow your captain.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
         if (typeof showOverlay === 'function') showOverlay();
       };
       if (Array.isArray(window.tours) && window.tours.length) {
@@ -54,8 +53,6 @@
           a.onclick = null;
         }
       });
-
-      // Login button: show form for guests; only staff with active Supabase session go to ops
       window.openAuthModal = async function(){
         try {
           var sessionUser = (typeof checkActiveAuthUser === 'function') ? await checkActiveAuthUser() : null;
@@ -68,19 +65,11 @@
             renderUserDashboard(sessionUser);
             return;
           }
-          // Stale admin cookie without live login → clear so Login form appears
           try {
             var raw = sessionStorage.getItem('feelit_admin_session');
             if (raw && !sessionUser) sessionStorage.removeItem('feelit_admin_session');
           } catch (e) {}
           if (typeof showAuthTabs === 'function') showAuthTabs('login');
-          else if (typeof showOverlay === 'function') {
-            var mc = document.getElementById('modalContent');
-            if (mc) {
-              mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Login</h2><p class="sub">Enter your email and password</p>';
-              showOverlay();
-            }
-          }
         } catch (err) {
           console.error(err);
           if (typeof showAuthTabs === 'function') showAuthTabs('login');
@@ -90,17 +79,17 @@
     } catch (e) { console.warn('Feel It patches', e); }
   }
 
-  fetch('https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js')
-    .then(function(r){ return r.text(); })
-    .then(function(code){
-      var s = document.createElement('script');
-      s.textContent = code;
-      document.head.appendChild(s);
-      applyPatches();
-      setTimeout(applyPatches, 800);
-      setTimeout(applyPatches, 2500);
-    })
-    .catch(function(err){
-      console.error('Core script load failed', err);
-    });
+  // CSP allows script-src to jsdelivr, but connect-src blocks fetch — use <script src>
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js';
+  s.async = false;
+  s.onload = function(){
+    applyPatches();
+    setTimeout(applyPatches, 600);
+    setTimeout(applyPatches, 2000);
+  };
+  s.onerror = function(){
+    console.error('Core script failed to load');
+  };
+  document.head.appendChild(s);
 })();

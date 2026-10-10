@@ -27,14 +27,10 @@
     .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
     .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
     .pill{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(255,183,3,.15);color:var(--gold)}
-    .pill.ok{background:rgba(0,245,212,.15);color:var(--teal)}
-    .pill.warn{background:rgba(248,113,113,.15);color:var(--danger)}
-    .pill.live{background:#00F5D4;color:#04120f}
     input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0d1320;color:#fff;margin:4px 0 10px}
     label{font-size:12px;color:var(--muted);display:block}
     .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px}
     .btn-p{background:var(--teal);color:#04120f}
-    .btn-g{background:transparent;color:var(--teal);border:1px solid var(--line)}
     .btn-d{background:transparent;color:var(--danger);border:1px solid rgba(248,113,113,.35)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     #fleetMap,#deskMap{height:420px;border-radius:14px}
@@ -48,9 +44,6 @@
     .chk{display:flex;gap:8px;align-items:center;margin:6px 0;color:var(--ink);font-size:13px}
     .chk input{width:auto;margin:0}
     .muted{color:var(--muted);font-size:13px}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{text-align:left;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
-    th{color:var(--muted);font-size:11px;text-transform:uppercase}
     @media(max-width:900px){.app{grid-template-columns:1fr}nav{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}.kpis,.grid2,.perm-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -100,6 +93,6 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="ops.js"></script>
+  <script src="ops-core.js?v=13"></script>
 </body>
 </html>

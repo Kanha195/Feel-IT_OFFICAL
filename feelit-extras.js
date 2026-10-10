@@ -1,4 +1,4 @@
-/* Load full feelit-extras from last good commit + CONTACT_INFO already in feelit-config.js */
+/* feelit-extras loader — script tag (CSP-safe) */
 (function(){
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {
@@ -10,7 +10,7 @@
     };
   }
   var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@644854bc7432eb1bcf7da6155bf530ff6b17e765/feelit-extras.js';
-  s.onerror = function(){ console.warn('feelit-extras CDN load failed'); };
+  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/feelit-extras.js';
+  s.onerror = function(){ console.warn('feelit-extras failed'); };
   document.head.appendChild(s);
 })();
