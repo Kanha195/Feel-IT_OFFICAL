@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Ride · Feel It</title>
+  <meta name="robots" content="noindex">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root{--void:#0B0F19;--teal:#00F5D4;--gold:#FFB703;--panel:#121826;--line:rgba(0,245,212,.16);--ink:#F4F7FB;--muted:#9AA6B8}
+    *{box-sizing:border-box} body{margin:0;background:var(--void);color:var(--ink);font-family:"Work Sans",system-ui,sans-serif;min-height:100vh}
+    a{color:var(--teal)} header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    header .brand{font-family:"Bebas Neue",sans-serif;font-size:28px;color:var(--teal);letter-spacing:.04em;text-decoration:none}
+    main{max-width:720px;margin:0 auto;padding:24px 16px 60px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+    h1{font-family:"Bebas Neue",sans-serif;font-weight:400;letter-spacing:.04em;margin:0 0 8px;font-size:32px}
+    .sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em}
+    input,textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0d1320;color:#fff;font-size:15px}
+    button,.btn{background:var(--teal);color:#041018;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;font-size:14px}
+    button.ghost{background:transparent;color:var(--teal);border:1px solid var(--line)}
+    .status{display:inline-block;padding:6px 12px;border-radius:999px;background:rgba(0,245,212,.15);color:var(--teal);font-size:13px;font-weight:600}
+    .status.pending{background:rgba(255,183,3,.15);color:var(--gold)}
+    .status.completed{background:rgba(34,197,94,.15);color:#4ade80}
+    .status.cancelled{background:rgba(248,113,113,.15);color:#f87171}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}}
+    #map{height:220px;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
+    .steps{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+    .steps span{font-size:11px;padding:4px 8px;border-radius:8px;background:#0d1320;color:var(--muted);border:1px solid var(--line)}
+    .steps span.on{color:var(--teal);border-color:var(--teal)}
+    .err{color:#f87171;font-size:14px}.ok{color:#4ade80;font-size:14px}
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="index.html">FEEL IT</a>
+    <a href="index.html" style="color:var(--muted);font-size:14px;text-decoration:none">← Home</a>
+  </header>
+  <main>
+    <h1>My Ride</h1>
+    <p class="sub">Enter the email from your booking to see status, meeting point, captain, map, and leave a review.</p>
+    <div class="card" id="lookupCard">
+      <label>Email used for booking</label>
+      <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+      <label>Booking ID (optional)</label>
+      <input id="bookingId" type="text" placeholder="booking id / ref">
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button type="button" id="btnLookup">Find my ride</button>
+        <button type="button" class="ghost" id="btnWa">WhatsApp support</button>
+      </div>
+      <p id="lookupMsg" class="err" style="margin-top:10px"></p>
+    </div>
+    <div id="result" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <h2 id="tourTitle" style="margin:0;font-family:Bebas Neue,sans-serif;font-size:26px">Tour</h2>
+            <div id="statusPill" class="status pending">Pending</div>
+          </div>
+          <div style="text-align:right;font-size:13px;color:var(--muted)">
+            <div id="rideDate"></div>
+            <div id="ridePrice"></div>
+          </div>
+        </div>
+        <div class="steps" id="steps"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px;font-family:Bebas Neue,sans-serif">Meeting & captain</h3>
+        <div class="grid">
+          <div><label>Meeting point</label><div id="meetPoint">—</div></div>
+          <div><label>Time</label><div id="meetTime">—</div></div>
+          <div><label>Captain</label><div id="captainName">Assigned after payment</div></div>
+          <div><label>Captain phone</label><div id="captainPhone">—</div></div>
+        </div>
+        <div id="map"></div>
+        <p id="briefing" style="margin-top:12px;font-size:14px;color:var(--muted);line-height:1.5"></p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px;font-family:Bebas Neue,sans-serif">Rate your ride</h3>
+        <label>Stars (1–5)</label>
+        <select id="stars"><option value="5">5 – Excellent</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
+        <label>Comment</label>
+        <textarea id="reviewText" rows="3" placeholder="How was the ride?"></textarea>
+        <label>Tip amount NPR (optional)</label>
+        <input id="tip" type="number" min="0" placeholder="0">
+        <button type="button" id="btnReview" style="margin-top:10px">Submit review</button>
+        <p id="reviewMsg" style="margin-top:8px"></p>
+      </div>
+      <div class="card">
+        <a class="btn" href="https://wa.me/9779825344810?text=SOS%20Feel%20It%20ride" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;background:#f87171;color:#fff">Emergency SOS (WhatsApp)</a>
+      </div>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  (function(){
+    var SUPABASE_URL = 'https://gsjkexvchfozviqllpvq.supabase.co';
+    var SUPABASE_ANON = 'sb_publishable_G6Su-3CqSjBJaVdRuYwfMw_dDTE2S8s';
+    var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    var currentBooking = null, map, marker;
+
+    function qs(name){ var m = new URLSearchParams(location.search).get(name); return m ? decodeURIComponent(m) : ''; }
+    function statusClass(s){ s=(s||'').toLowerCase(); if(/complete|done|finished/.test(s)) return 'completed'; if(/cancel/.test(s)) return 'cancelled'; if(/confirm|assign|on.?ride|progress/.test(s)) return 'status'; return 'pending'; }
+    function paintSteps(status){
+      var order=['pending','confirmed','rider_assigned','on_ride','completed'];
+      var labels={pending:'Pending',confirmed:'Confirmed',rider_assigned:'Rider assigned',on_ride:'On ride',completed:'Completed'};
+      var s=(status||'pending').toLowerCase().replace(/\s+/g,'_');
+      var idx=order.indexOf(s);
+      if(idx<0){ if(/confirm/.test(s)) idx=1; else if(/assign|rider/.test(s)) idx=2; else if(/ride|progress|start/.test(s)) idx=3; else if(/complete|done/.test(s)) idx=4; else idx=0; }
+      document.getElementById('steps').innerHTML=order.map(function(k,i){ return '<span class="'+(i<=idx?'on':'')+'">'+labels[k]+'</span>'; }).join('');
+    }
+    function showBooking(b){
+      currentBooking=b;
+      document.getElementById('result').style.display='block';
+      document.getElementById('tourTitle').textContent=b.tour_title||b.tour_name||b.tour||'Feel It ride';
+      var st=b.status||'pending';
+      var pill=document.getElementById('statusPill');
+      pill.textContent=st; pill.className='status '+statusClass(st); paintSteps(st);
+      document.getElementById('rideDate').textContent=b.ride_date||b.date||'';
+      document.getElementById('ridePrice').textContent=b.price!=null?('NPR '+Number(b.price).toLocaleString()):'';
+      var pack={}; try{ pack=typeof b.ride_pack==='string'?JSON.parse(b.ride_pack):(b.ride_pack||{}); }catch(e){}
+      document.getElementById('meetPoint').textContent=pack.meeting_point||b.meeting_point||'Shared after confirmation';
+      document.getElementById('meetTime').textContent=pack.meeting_time||b.meeting_time||'—';
+      document.getElementById('captainName').textContent=b.rider_name||pack.captain_name||'Assigned after payment';
+      document.getElementById('captainPhone').textContent=b.rider_phone||pack.captain_phone||'—';
+      document.getElementById('briefing').textContent=pack.briefing||pack.itinerary||b.notes||'';
+      var lat=Number(pack.lat||b.live_lat||27.7172), lng=Number(pack.lng||b.live_lng||85.324);
+      if(!map){ map=L.map('map').setView([lat,lng],13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map); marker=L.marker([lat,lng]).addTo(map); }
+      else { map.setView([lat,lng],13); marker.setLatLng([lat,lng]); }
+      setTimeout(function(){ map.invalidateSize(); },200);
+    }
+    async function lookup(){
+      var msg=document.getElementById('lookupMsg'); msg.textContent=''; msg.className='err';
+      var email=(document.getElementById('email').value||'').trim().toLowerCase();
+      var id=(document.getElementById('bookingId').value||'').trim();
+      if(!email&&!id){ msg.textContent='Enter email or booking ID'; return; }
+      try{
+        var q=client.from('bookings').select('*');
+        if(id) q=q.eq('id',id); else q=q.ilike('email',email);
+        var res=await q.order('created_at',{ascending:false}).limit(1);
+        if(res.error) throw res.error;
+        if(!res.data||!res.data.length){ msg.textContent='No booking found'; return; }
+        showBooking(res.data[0]); msg.className='ok'; msg.textContent='Booking found';
+      }catch(e){
+        console.warn(e);
+        msg.textContent='Could not load booking (permissions or network). WhatsApp us with your email.';
+      }
+    }
+    document.getElementById('btnLookup').onclick=lookup;
+    document.getElementById('btnWa').onclick=function(){ location.href='https://wa.me/9779825344810?text='+encodeURIComponent('Hi Feel It — help with my booking'); };
+    document.getElementById('btnReview').onclick=function(){
+      var m=document.getElementById('reviewMsg');
+      if(!currentBooking){ m.textContent='Find your ride first'; m.className='err'; return; }
+      var payload={booking_id:currentBooking.id, stars:document.getElementById('stars').value, comment:document.getElementById('reviewText').value, tip:document.getElementById('tip').value, at:new Date().toISOString()};
+      try{ var all=JSON.parse(localStorage.getItem('feelit_reviews')||'[]'); all.push(payload); localStorage.setItem('feelit_reviews',JSON.stringify(all)); }catch(e){}
+      client.from('reviews').insert([{booking_id:currentBooking.id, email:currentBooking.email, stars:Number(payload.stars), comment:payload.comment, tip_npr:Number(payload.tip||0)}]).then(function(){});
+      m.className='ok'; m.textContent='Thanks! Review submitted.';
+    };
+    if(qs('email')) document.getElementById('email').value=qs('email');
+    if(qs('id')||qs('ref')) document.getElementById('bookingId').value=qs('id')||qs('ref');
+    if(qs('email')||qs('id')||qs('ref')) setTimeout(lookup,400);
+  })();
+  </script>
+</body>
+</html>
