@@ -1,4 +1,4 @@
-/* Feel It — bootstrap: load core via <script src> (CSP blocks fetch to CDN) */
+/* Feel It bootstrap — same-origin core load (CSP-safe) */
 (function(){
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {
@@ -39,7 +39,7 @@
       window.openTermsModal = function(){
         var mc = document.getElementById('modalContent');
         if (!mc) { location.href = 'terms.html'; return; }
-        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until we verify payment. After verification we assign a captain and publish your ride briefing in My Account.</p><p>Wear the supplied helmet and gear. Follow your captain.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
+        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until payment is verified. Captain and ride briefing appear in My Account after confirmation.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
         if (typeof showOverlay === 'function') showOverlay();
       };
       if (Array.isArray(window.tours) && window.tours.length) {
@@ -47,12 +47,6 @@
         if (typeof renderTours === 'function') renderTours();
         if (typeof renderHiddenGems === 'function') renderHiddenGems();
       }
-      document.querySelectorAll('a').forEach(function(a){
-        if (/terms/i.test(a.textContent || '') && (a.getAttribute('href') === '#' || !a.getAttribute('href'))) {
-          a.setAttribute('href', 'terms.html');
-          a.onclick = null;
-        }
-      });
       window.openAuthModal = async function(){
         try {
           var sessionUser = (typeof checkActiveAuthUser === 'function') ? await checkActiveAuthUser() : null;
@@ -76,20 +70,27 @@
         }
       };
       window.openStaffOrDashboard = window.openAuthModal;
-    } catch (e) { console.warn('Feel It patches', e); }
+    } catch (e) { console.warn('patches', e); }
   }
 
-  // CSP allows script-src to jsdelivr, but connect-src blocks fetch — use <script src>
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js';
-  s.async = false;
-  s.onload = function(){
-    applyPatches();
-    setTimeout(applyPatches, 600);
-    setTimeout(applyPatches, 2000);
-  };
-  s.onerror = function(){
-    console.error('Core script failed to load');
-  };
-  document.head.appendChild(s);
+  async function loadCore(){
+    try {
+      var parts = ['script-core-p0.js?v=20', 'script-core-p1.js?v=20'];
+      var code = '';
+      for (var i = 0; i < parts.length; i++) {
+        var r = await fetch(parts[i]);
+        if (!r.ok) throw new Error(parts[i] + ' ' + r.status);
+        code += await r.text();
+      }
+      var s = document.createElement('script');
+      s.text = code;
+      document.head.appendChild(s);
+      applyPatches();
+      setTimeout(applyPatches, 700);
+      setTimeout(applyPatches, 2200);
+    } catch (e) {
+      console.error('Core script load failed', e);
+    }
+  }
+  loadCore();
 })();
