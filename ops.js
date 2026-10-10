@@ -42,7 +42,7 @@ async function tryLogin(email,pass){
       return{ok:false,err:'This Supabase user is not owner/staff. Use feelitofficial@gmail.com'};
     }
     if(error) return{ok:false,err:'Supabase: '+error.message};
-  }catch(e){return{ok:false,err:String(e.message||e);}}
+  }catch(e){return{ok:false,err:String(e.message||e)};}
   return{ok:false,err:'Login failed. Check email/password in Supabase Auth → Users.'};
 }
 async function logout(){try{await sb.auth.signOut();}catch(e){}sessionStorage.removeItem('feelit_ops_session');sessionStorage.removeItem('feelit_admin_session');location.reload();}
