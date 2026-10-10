@@ -2,28 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <link rel="icon" type="image/svg+xml" href="assets/unnamed.png">
-  <link rel="alternate icon" type="image/png" href="assets/unnamed.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="google-site-verification" content="n-dQpXWAFa2JVXUlFbyvq-kBIQT-aNDraRdjgO57rN0" />
-  <meta name="description" content="Feel It pairs solo travelers with local riders who know Nepal's mountain roads. Guided pillion bike tours from Kathmandu.">
-  <meta name="keywords" content="Nepal motorbike tours, pillion rides Nepal, guided motorcycle tours Kathmandu, Feel It Nepal">
-  <meta name="author" content="Feel It Nepal">
-  <meta name="robots" content="index, follow">
   <title>Feel It | Guided Bike Tours in Nepal</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (async function(){
+    try {
+      var urls = [
+        'index-full.html?v=2',
+        'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html'
+      ];
+      var html = null;
+      for (var i = 0; i < urls.length; i++) {
+        try {
+          var r = await fetch(urls[i]);
+          if (r.ok) {
+            html = await r.text();
+            if (html && html.length > 5000) break;
+          }
+        } catch (e) {}
+      }
+      if (!html || html.length < 5000) {
+        document.body.innerHTML = '<p style="font-family:system-ui;padding:40px">Could not load site. Open <a href="ops.html">Ops</a> or hard-refresh.</p>';
+        return;
+      }
+      html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi, '');
+      html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (e) {
+      document.body.innerHTML = '<p style="padding:40px;font-family:system-ui">Site load error: ' + e + '</p>';
+    }
+  })();
+  </script>
 </head>
 <body>
-<!-- BODY_PLACEHOLDER - full body restored via second commit if truncated -->
-<script src="script.js"></script>
-<script src="feelit-extras.js"></script>
-<script src="feelit-hero.js"></script>
-<script src="feelit-preloader.js"></script>
+  <p style="font-family:system-ui;padding:24px;color:#666">Loading Feel It…</p>
 </body>
 </html>
