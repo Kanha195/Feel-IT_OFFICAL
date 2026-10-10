@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feel It | Guided Bike Tours in Nepal</title>
   <script>
-  (async function(){
+  (async function () {
     try {
       var urls = [
-        'index-full.html?v=3',
         'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html'
       ];
       var html = null;
@@ -22,23 +21,28 @@
         } catch (e) {}
       }
       if (!html || html.length < 5000) {
-        document.body.innerHTML = '<p style="font-family:system-ui;padding:40px">Could not load site. Try <a href="ops.html">Ops</a> or hard-refresh.</p>';
+        document.body.innerHTML = '<p style="font-family:system-ui;padding:40px">Could not load site. Open <a href="ops.html">Ops</a>.</p>';
         return;
       }
       html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi, '');
       html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
-      if (html.indexOf('feelit-weather.js') < 0) {
-        html = html.replace(
-          'feelit-hero.js',
-          'feelit-config.js"></script><script src="feelit-weather.js"></script><script src="feelit-hero.js'
-        );
-      }
       if (html.indexOf('ride.html') < 0) {
         html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
       }
       document.open();
       document.write(html);
       document.close();
+      // Load config + multi-API weather after shell is in place
+      setTimeout(function () {
+        function add(src) {
+          var s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          document.head.appendChild(s);
+        }
+        add('feelit-config.js');
+        add('feelit-weather.js');
+      }, 400);
     } catch (e) {
       document.body.innerHTML = '<p style="padding:40px;font-family:system-ui">Site load error: ' + e + '</p>';
     }
