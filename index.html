@@ -35,14 +35,15 @@
       setTimeout(function () {
         function add(src) {
           var s = document.createElement('script');
-          s.src = src;
+          s.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=fix2';
           s.async = true;
           document.head.appendChild(s);
         }
         add('feelit-config.js');
         add('feelit-weather.js');
         add('feelit-features.js');
-      }, 400);
+        add('feelit-fix.js');
+      }, 500);
     } catch (e) {
       document.body.innerHTML = '<p style="padding:40px;font-family:system-ui">Site load error: ' + e + '</p>';
     }
