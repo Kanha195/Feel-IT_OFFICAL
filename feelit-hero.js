@@ -5,36 +5,81 @@
 
   const HQ_LAT = 27.7410, HQ_LNG = 85.3360; // Basundhara / Kathmandu HQ
 
-  /** WMO weather codes → icon + short label (Open-Meteo) */
+  /** WMO weather codes → icon (Open-Meteo) */
   function fiWeatherIcon(code) {
     const c = Number(code);
-    if (c === 0) return '☀️';
-    if (c === 1) return '🌤️';
-    if (c === 2) return '⛅';
-    if (c === 3) return '☁️';
-    if (c === 45 || c === 48) return '🌫️';
-    if ([51, 53, 55, 56, 57].includes(c)) return '🌦️';
-    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(c)) return '🌧️';
-    if ([71, 73, 75, 77, 85, 86].includes(c)) return '❄️';
-    if ([95, 96, 99].includes(c)) return '⛈️';
+    const map = {
+      0: '☀️',
+      1: '🌤️',
+      2: '⛅',
+      3: '☁️',
+      45: '🌫️',
+      48: '🌁',
+      51: '🌦️',
+      53: '🌦️',
+      55: '🌧️',
+      56: '🌨️',
+      57: '🌨️',
+      61: '🌧️',
+      63: '🌧️',
+      65: '🌧️',
+      66: '🌨️',
+      67: '🌨️',
+      71: '🌨️',
+      73: '❄️',
+      75: '❄️',
+      77: '🌨️',
+      80: '🌦️',
+      81: '🌧️',
+      82: '⛈️',
+      85: '🌨️',
+      86: '❄️',
+      95: '⛈️',
+      96: '⛈️',
+      99: '🌩️'
+    };
+    if (map[c]) return map[c];
+    try {
+      const h = new Date().getHours();
+      if (c === 0 && (h < 6 || h >= 19)) return '🌙';
+      if (c === 1 && (h < 6 || h >= 19)) return '🌙';
+      if (c === 2 && (h < 6 || h >= 19)) return '☁️';
+    } catch (e) {}
     return '🌡️';
   }
   function fiWeatherLabel(code) {
     const c = Number(code);
-    if (c === 0) return 'Clear sky';
-    if (c === 1) return 'Mainly clear';
-    if (c === 2) return 'Partly cloudy';
-    if (c === 3) return 'Overcast';
-    if (c === 45 || c === 48) return 'Fog';
-    if ([51, 53, 55].includes(c)) return 'Drizzle';
-    if ([56, 57].includes(c)) return 'Freezing drizzle';
-    if ([61, 63, 65].includes(c)) return 'Rain';
-    if ([66, 67].includes(c)) return 'Freezing rain';
-    if ([71, 73, 75, 77].includes(c)) return 'Snow';
-    if ([80, 81, 82].includes(c)) return 'Rain showers';
-    if ([85, 86].includes(c)) return 'Snow showers';
-    if ([95, 96, 99].includes(c)) return 'Thunderstorm';
-    return 'Live weather';
+    const map = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Fog',
+      48: 'Rime fog',
+      51: 'Light drizzle',
+      53: 'Drizzle',
+      55: 'Heavy drizzle',
+      56: 'Freezing drizzle',
+      57: 'Heavy freezing drizzle',
+      61: 'Light rain',
+      63: 'Rain',
+      65: 'Heavy rain',
+      66: 'Freezing rain',
+      67: 'Heavy freezing rain',
+      71: 'Light snow',
+      73: 'Snow',
+      75: 'Heavy snow',
+      77: 'Snow grains',
+      80: 'Light showers',
+      81: 'Showers',
+      82: 'Heavy showers',
+      85: 'Snow showers',
+      86: 'Heavy snow showers',
+      95: 'Thunderstorm',
+      96: 'Storm + hail',
+      99: 'Severe storm'
+    };
+    return map[c] || 'Live weather';
   }
   function fiWeatherKind(code) {
     const c = Number(code);
@@ -175,10 +220,7 @@
     window.__fiWeatherTimer = setInterval(fillWeatherChip, 15 * 60 * 1000);
   }
 
-  function fillTrust() {
-    /* trust strip is static HTML — nothing to fill */
-  }
-
+  function fillTrust() {}
   function fillRegions() {
     const sel = $('fiPlanRegion');
     if (!sel || typeof tours === 'undefined') return;
@@ -187,7 +229,7 @@
     const current = sel.value;
     sel.innerHTML =
       '<option value="All">All regions</option>' +
-      regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+      regions.map(r => '<option value="' + esc(r) + '">' + esc(r) + '</option>').join('');
     if (current) sel.value = current;
   }
 
@@ -195,11 +237,9 @@
     const host = $('fiPopularStrip');
     if (!host || typeof tours === 'undefined') return;
     if (!tours.length) {
-      host.innerHTML =
-        '<div class="empty-state">Tours will appear here once published.</div>';
+      host.innerHTML = '<div class="empty-state">Tours will appear here once published.</div>';
       return;
     }
-
     let list = [];
     try {
       const ids = typeof loadFeaturedIds === 'function' ? loadFeaturedIds() : [];
@@ -208,45 +248,36 @@
         list = ids.map(id => map[String(id)]).filter(Boolean);
       }
     } catch (e) {}
-
     if (!list.length) {
       list = tours.filter(t => t.featured || t.popular).slice(0, 12);
       if (!list.length) list = tours.slice(0, 8);
     }
-
-    const escFn = typeof esc === 'function' ? esc : s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[m]));
-
     host.innerHTML = list.map(t => {
-      const title = escFn(t.title || t.name || 'Tour');
+      const title = esc(t.title || t.name || 'Tour');
       const price = t.price != null ? 'NPR ' + Number(t.price).toLocaleString() : '';
-      const img = escFn(t.image || t.photo || 'assets/1.png');
-      const id = escFn(t.id);
-      return `<article class="popular-card" data-tour-id="${id}">
-        <div class="popular-card-media"><img src="${img}" alt="${title}" loading="lazy"></div>
-        <div class="popular-card-body"><h3>${title}</h3><p class="price">${price}</p>
-        <button type="button" class="btn btn-primary" onclick="typeof openBooking==='function'&&openBooking('${id}')">Book now</button></div>
-      </article>`;
+      const img = esc(t.image || t.photo || 'assets/1.png');
+      const id = esc(t.id);
+      return '<article class="popular-card" data-tour-id="' + id + '">' +
+        '<div class="popular-card-media"><img src="' + img + '" alt="' + title + '" loading="lazy"></div>' +
+        '<div class="popular-card-body"><h3>' + title + '</h3><p class="price">' + price + '</p>' +
+        '<button type="button" class="btn btn-primary" onclick="typeof openBooking===\'function\'&&openBooking(\'' + id + '\')">Book now</button></div></article>';
     }).join('');
   }
 
-  function fillReviews() {
-    /* reviews static or loaded elsewhere */
-  }
+  function fillReviews() {}
 
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"');
+      .split('&').join('&' + 'amp;')
+      .split('<').join('&' + 'lt;')
+      .split('>').join('&' + 'gt;')
+      .split('"').join('&' + 'quot;');
   }
 
-  // Infinite popular strip helpers (safe no-ops if missing DOM)
   function jumpToMiddle() {}
   window.syncFeatCustomize = window.syncFeatCustomize || function () {};
   window.applyFeatToRouteBuilder = window.applyFeatToRouteBuilder || function () {};
 
-  // boot
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       startWeatherLoop();
