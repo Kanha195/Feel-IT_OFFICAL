@@ -5,79 +5,63 @@
 
   const HQ_LAT = 27.7410, HQ_LNG = 85.3360; // Basundhara / Kathmandu HQ
 
-  /** WMO weather codes → icon (Open-Meteo) */
   function fiWeatherIcon(code) {
     const c = Number(code);
-    const map = {
-      0: '☀️',
-      1: '🌤️',
-      2: '⛅',
-      3: '☁️',
-      45: '🌫️',
-      48: '🌁',
-      51: '🌦️',
-      53: '🌦️',
-      55: '🌧️',
-      56: '🌨️',
-      57: '🌨️',
-      61: '🌧️',
-      63: '🌧️',
-      65: '🌧️',
-      66: '🌨️',
-      67: '🌨️',
-      71: '🌨️',
-      73: '❄️',
-      75: '❄️',
-      77: '🌨️',
-      80: '🌦️',
-      81: '🌧️',
-      82: '⛈️',
-      85: '🌨️',
-      86: '❄️',
-      95: '⛈️',
-      96: '⛈️',
-      99: '🌩️'
-    };
-    if (map[c]) return map[c];
-    try {
-      const h = new Date().getHours();
-      if (c === 0 && (h < 6 || h >= 19)) return '🌙';
-      if (c === 1 && (h < 6 || h >= 19)) return '🌙';
-      if (c === 2 && (h < 6 || h >= 19)) return '☁️';
-    } catch (e) {}
+    const h = (() => { try { return new Date().getHours(); } catch (e) { return 12; } })();
+    const night = h < 6 || h >= 19;
+
+    if (c === 0) return night ? '🌙' : '☀️';
+    if (c === 1) return night ? '🌙' : '🌤️';
+    if (c === 2) return night ? '☁️' : '⛅';
+    if (c === 3) return '☁️';
+
+    // Fog
+    if (c === 45) return '🌫️';
+    if (c === 48) return '🌃';
+
+    // Rain / drizzle
+    if (c === 51) return '🌦️';
+    if (c === 53) return '🌦️';
+    if (c === 55) return '🌧️';
+    if (c === 56) return '🌨️';
+    if (c === 57) return '🌨️';
+    if (c === 61) return '🌧️';
+    if (c === 63) return '🌧️';
+    if (c === 65) return '💧';
+    if (c === 66) return '🌨️';
+    if (c === 67) return '🧊';
+    if (c === 80) return '🌦️';
+    if (c === 81) return '🌧️';
+    if (c === 82) return '⛈️';
+
+    // Snow
+    if (c === 71) return '🌨️';
+    if (c === 73) return '❄️';
+    if (c === 75) return '☃️';
+    if (c === 77) return '🌨️';
+    if (c === 85) return '🌨️';
+    if (c === 86) return '❄️';
+
+    // Thunder
+    if (c === 95) return '⛈️';
+    if (c === 96) return '⛈️';
+    if (c === 99) return '🌩️';
+
     return '🌡️';
   }
   function fiWeatherLabel(code) {
     const c = Number(code);
     const map = {
-      0: 'Clear sky',
-      1: 'Mainly clear',
-      2: 'Partly cloudy',
-      3: 'Overcast',
-      45: 'Fog',
-      48: 'Rime fog',
-      51: 'Light drizzle',
-      53: 'Drizzle',
-      55: 'Heavy drizzle',
-      56: 'Freezing drizzle',
-      57: 'Heavy freezing drizzle',
-      61: 'Light rain',
-      63: 'Rain',
-      65: 'Heavy rain',
-      66: 'Freezing rain',
-      67: 'Heavy freezing rain',
-      71: 'Light snow',
-      73: 'Snow',
-      75: 'Heavy snow',
-      77: 'Snow grains',
-      80: 'Light showers',
-      81: 'Showers',
-      82: 'Heavy showers',
-      85: 'Snow showers',
-      86: 'Heavy snow showers',
-      95: 'Thunderstorm',
-      96: 'Storm + hail',
-      99: 'Severe storm'
+      0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+      45: 'Fog', 48: 'Rime fog',
+      51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+      56: 'Freezing drizzle', 57: 'Heavy freezing drizzle',
+      61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+      66: 'Freezing rain', 67: 'Heavy freezing rain',
+      71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+      80: 'Light showers', 81: 'Showers', 82: 'Heavy showers',
+      85: 'Snow showers', 86: 'Heavy snow showers',
+      95: 'Thunderstorm', 96: 'Storm + hail', 99: 'Severe storm'
     };
     return map[c] || 'Live weather';
   }
@@ -95,16 +79,14 @@
   async function fiReverseName(lat, lng) {
     try {
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`,
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=10',
         { headers: { Accept: 'application/json' } }
       );
       if (!r.ok) return null;
       const j = await r.json();
       const a = j.address || {};
       return a.city || a.town || a.village || a.county || a.state || null;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   async function fillWeatherChip() {
@@ -118,9 +100,7 @@
         ? await Promise.race([window.fiGetLocation(), timeout])
         : null;
       if (loc && loc.lat != null && loc.lng != null) {
-        lat = loc.lat;
-        lng = loc.lng;
-        place = 'Your location';
+        lat = loc.lat; lng = loc.lng; place = 'Your location';
         const name = await fiReverseName(lat, lng);
         if (name) place = name;
       }
@@ -130,10 +110,10 @@
 
     try {
       const url =
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation` +
-        `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
-        `&timezone=auto&forecast_days=2`;
+        'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng +
+        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation' +
+        '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code' +
+        '&timezone=auto&forecast_days=2';
 
       const res = await fetch(url);
       if (!res.ok) throw new Error('Open-Meteo HTTP ' + res.status);
@@ -152,18 +132,9 @@
       if (textEl) textEl.textContent = label;
 
       if ($('fiWeatherTemp')) $('fiWeatherTemp').textContent = Math.round(c.temperature_2m) + '°';
-      if ($('fiWeatherHum')) {
-        $('fiWeatherHum').textContent =
-          c.relative_humidity_2m != null ? Math.round(c.relative_humidity_2m) + '%' : '—';
-      }
-      if ($('fiWeatherWind')) {
-        $('fiWeatherWind').textContent =
-          c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) + ' km/h' : '—';
-      }
-      if ($('fiWeatherFeels')) {
-        $('fiWeatherFeels').textContent =
-          c.apparent_temperature != null ? Math.round(c.apparent_temperature) + '°' : '—';
-      }
+      if ($('fiWeatherHum')) $('fiWeatherHum').textContent = c.relative_humidity_2m != null ? Math.round(c.relative_humidity_2m) + '%' : '—';
+      if ($('fiWeatherWind')) $('fiWeatherWind').textContent = c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) + ' km/h' : '—';
+      if ($('fiWeatherFeels')) $('fiWeatherFeels').textContent = c.apparent_temperature != null ? Math.round(c.apparent_temperature) + '°' : '—';
 
       try {
         const d = data.daily;
@@ -181,36 +152,18 @@
       window.__fiWeatherCode = code;
       window.__fiWeatherKind = kind;
       window.__fiWeather = {
-        temp: c.temperature_2m,
-        feels: c.apparent_temperature,
-        humidity: c.relative_humidity_2m,
-        wind: c.wind_speed_10m,
-        windDir: c.wind_direction_10m,
-        precip: c.precipitation,
-        code,
-        kind,
-        label,
-        icon,
-        lat,
-        lng,
-        place,
-        updatedAt: Date.now()
+        temp: c.temperature_2m, feels: c.apparent_temperature,
+        humidity: c.relative_humidity_2m, wind: c.wind_speed_10m,
+        windDir: c.wind_direction_10m, precip: c.precipitation,
+        code, kind, label, icon, lat, lng, place, updatedAt: Date.now()
       };
-
-      window.dispatchEvent(
-        new CustomEvent('fi-weather-updated', {
-          detail: window.__fiWeather
-        })
-      );
-
+      window.dispatchEvent(new CustomEvent('fi-weather-updated', { detail: window.__fiWeather }));
       el.setAttribute('data-weather-kind', kind || 'unknown');
       el.classList.add('fi-weather-live');
     } catch (e) {
       console.warn('Weather API failed', e);
       const textEl = el.querySelector('.hero-weather-text');
-      if (textEl && /checking/i.test(textEl.textContent || '')) {
-        textEl.textContent = 'Weather unavailable';
-      }
+      if (textEl && /checking/i.test(textEl.textContent || '')) textEl.textContent = 'Weather unavailable';
     }
   }
 
@@ -227,8 +180,7 @@
     const regions = [...new Set(tours.map(t => t.region).filter(Boolean))].sort();
     if (!regions.length) return;
     const current = sel.value;
-    sel.innerHTML =
-      '<option value="All">All regions</option>' +
+    sel.innerHTML = '<option value="All">All regions</option>' +
       regions.map(r => '<option value="' + esc(r) + '">' + esc(r) + '</option>').join('');
     if (current) sel.value = current;
   }
@@ -256,16 +208,20 @@
       const title = esc(t.title || t.name || 'Tour');
       const price = t.price != null ? 'NPR ' + Number(t.price).toLocaleString() : '';
       const img = esc(t.image || t.photo || 'assets/1.png');
-      const id = esc(t.id);
+      const id = esc(String(t.id));
       return '<article class="popular-card" data-tour-id="' + id + '">' +
         '<div class="popular-card-media"><img src="' + img + '" alt="' + title + '" loading="lazy"></div>' +
         '<div class="popular-card-body"><h3>' + title + '</h3><p class="price">' + price + '</p>' +
-        '<button type="button" class="btn btn-primary" onclick="typeof openBooking===\'function\'&&openBooking(\'' + id + '\')">Book now</button></div></article>';
+        '<button type="button" class="btn btn-primary" data-book="' + id + '">Book now</button></div></article>';
     }).join('');
+    host.querySelectorAll('[data-book]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (typeof openBooking === 'function') openBooking(btn.getAttribute('data-book'));
+      });
+    });
   }
 
   function fillReviews() {}
-
   function esc(s) {
     return String(s == null ? '' : s)
       .split('&').join('&' + 'amp;')
