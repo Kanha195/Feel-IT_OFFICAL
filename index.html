@@ -32,7 +32,6 @@
       document.open();
       document.write(html);
       document.close();
-      // Load config + multi-API weather after shell is in place
       setTimeout(function () {
         function add(src) {
           var s = document.createElement('script');
@@ -42,6 +41,7 @@
         }
         add('feelit-config.js');
         add('feelit-weather.js');
+        add('feelit-features.js');
       }, 400);
     } catch (e) {
       document.body.innerHTML = '<p style="padding:40px;font-family:system-ui">Site load error: ' + e + '</p>';
