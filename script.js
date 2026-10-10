@@ -1,4 +1,4 @@
-/* Feel It bootstrap — same-origin core load (CSP-safe) */
+/* Feel It bootstrap */
 (function(){
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {
@@ -39,7 +39,7 @@
       window.openTermsModal = function(){
         var mc = document.getElementById('modalContent');
         if (!mc) { location.href = 'terms.html'; return; }
-        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until payment is verified. Captain and ride briefing appear in My Account after confirmation.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
+        mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Terms & Conditions</h2><p class="sub">Feel It Nepal</p><div style="max-height:55vh;overflow:auto;line-height:1.55;font-size:14px;"><p>Bookings stay Pending until payment is verified. Captain and briefing appear in My Account after confirmation.</p><p>See <a href="privacy.html">Privacy policy</a>.</p></div><button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="closeOverlay()">I understand</button>';
         if (typeof showOverlay === 'function') showOverlay();
       };
       if (Array.isArray(window.tours) && window.tours.length) {
@@ -75,19 +75,15 @@
 
   async function loadCore(){
     try {
-      var parts = ['script-core-p0.js?v=20', 'script-core-p1.js?v=20'];
-      var code = '';
-      for (var i = 0; i < parts.length; i++) {
-        var r = await fetch(parts[i]);
-        if (!r.ok) throw new Error(parts[i] + ' ' + r.status);
-        code += await r.text();
-      }
-      var s = document.createElement('script');
-      s.text = code;
-      document.head.appendChild(s);
+      var r = await fetch('https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js');
+      if (!r.ok) throw new Error('cdn ' + r.status);
+      var code2 = await r.text();
+      var s2 = document.createElement('script');
+      s2.text = code2;
+      document.head.appendChild(s2);
       applyPatches();
       setTimeout(applyPatches, 700);
-      setTimeout(applyPatches, 2200);
+      setTimeout(applyPatches, 2000);
     } catch (e) {
       console.error('Core script load failed', e);
     }
