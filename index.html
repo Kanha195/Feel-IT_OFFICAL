@@ -28,16 +28,17 @@
       if (html.indexOf('ride.html') < 0) {
         html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
       }
+      var endScript = '<' + '/script>';
       if (html.indexOf('feelit-fix.js') < 0) {
         html = html.replace(
           'src="feelit-hero.js"',
-          'src="feelit-fix.js"></script><script src="feelit-hero.js"'
+          'src="feelit-fix.js">' + endScript + '<script src="feelit-hero.js"'
         );
       }
       if (html.indexOf('feelit-auth-refine.js') < 0) {
         html = html.replace(
           'src="feelit-preloader.js"',
-          'src="feelit-auth-refine.js"></script><script src="feelit-preloader.js"'
+          'src="feelit-auth-refine.js">' + endScript + '<script src="feelit-preloader.js"'
         );
       }
 
