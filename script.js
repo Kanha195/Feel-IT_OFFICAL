@@ -1,4 +1,4 @@
-/* Feel It — inflate same-origin compressed core (CSP-safe) */
+/* Feel It — inflate same-origin compressed core */
 (function(){
   if (typeof window.CONTACT_INFO === 'undefined') {
     window.CONTACT_INFO = {email:'feelitofficial@gmail.com',phone:'+977-9808747221',whatsapp:'9779825344810',address:'Basundhara, Kathmandu, Nepal',instagram:'feelitoffical'};
@@ -6,7 +6,6 @@
   try {
     var l=document.createElement('link'); l.rel='stylesheet'; l.href='feelit-float-fix.css'; document.head.appendChild(l);
   } catch(e){}
-
   function applyPatches(){
     try {
       if (typeof PAYMENT_METHODS !== 'undefined') {
@@ -32,22 +31,22 @@
       }
     } catch(e){}
   }
-
   async function inflateB64(b64){
     var bin = Uint8Array.from(atob(b64), function(c){ return c.charCodeAt(0); });
-    if (typeof DecompressionStream !== 'undefined') {
-      var ds = new DecompressionStream('deflate');
-      var stream = new Blob([bin]).stream().pipeThrough(ds);
-      return await new Response(stream).text();
-    }
-    throw new Error('DecompressionStream not supported');
+    var ds = new DecompressionStream('deflate');
+    var stream = new Blob([bin]).stream().pipeThrough(ds);
+    return await new Response(stream).text();
   }
-
   async function loadCore(){
     try {
-      var a = await (await fetch('core-a.txt?v=30')).text();
-      var b = await (await fetch('core-b.txt?v=30')).text();
-      var code = await inflateB64((a+b).trim());
+      var parts = ['c0.txt','c1.txt','c2.txt','c3.txt'];
+      var b64 = '';
+      for (var i=0;i<parts.length;i++){
+        var r = await fetch(parts[i]+'?v=31');
+        if (!r.ok) throw new Error(parts[i]+' '+r.status);
+        b64 += (await r.text()).trim();
+      }
+      var code = await inflateB64(b64);
       var s = document.createElement('script');
       s.text = code;
       document.head.appendChild(s);
