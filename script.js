@@ -1,11 +1,22 @@
 /* Feel It — bootstrap: last good core + live fixes */
 (function(){
+  // Define CONTACT_INFO immediately so feelit-extras.js never crashes
+  if (typeof window.CONTACT_INFO === 'undefined') {
+    window.CONTACT_INFO = {
+      email: 'feelitofficial@gmail.com',
+      phone: '+977-9808747221',
+      whatsapp: '9779825344810',
+      address: 'Basundhara, Kathmandu, Nepal',
+      instagram: 'feelitoffical'
+    };
+  }
   try {
     var l = document.createElement('link');
     l.rel = 'stylesheet';
     l.href = 'feelit-float-fix.css';
     document.head.appendChild(l);
   } catch (e) {}
+
   function applyPatches(){
     try {
       if (typeof PAYMENT_METHODS !== 'undefined') {
@@ -40,14 +51,56 @@
       document.querySelectorAll('a').forEach(function(a){
         if (/terms/i.test(a.textContent || '') && (a.getAttribute('href') === '#' || !a.getAttribute('href'))) {
           a.setAttribute('href', 'terms.html');
-          a.onclick = function(e){ e.preventDefault(); openTermsModal(); };
+          a.onclick = null;
         }
       });
-    } catch (e) { console.warn('Feel It patch', e); }
+
+      // Login button: show form for guests; only staff with active Supabase session go to ops
+      window.openAuthModal = async function(){
+        try {
+          var sessionUser = (typeof checkActiveAuthUser === 'function') ? await checkActiveAuthUser() : null;
+          if (sessionUser && typeof isStaffEmail === 'function' && isStaffEmail(sessionUser.email)) {
+            if (typeof writeStaffSession === 'function') writeStaffSession(sessionUser.email);
+            window.location.href = 'ops.html';
+            return;
+          }
+          if (sessionUser && typeof renderUserDashboard === 'function') {
+            renderUserDashboard(sessionUser);
+            return;
+          }
+          // Stale admin cookie without live login → clear so Login form appears
+          try {
+            var raw = sessionStorage.getItem('feelit_admin_session');
+            if (raw && !sessionUser) sessionStorage.removeItem('feelit_admin_session');
+          } catch (e) {}
+          if (typeof showAuthTabs === 'function') showAuthTabs('login');
+          else if (typeof showOverlay === 'function') {
+            var mc = document.getElementById('modalContent');
+            if (mc) {
+              mc.innerHTML = '<button class="modal-close" onclick="closeOverlay()">&times;</button><h2>Login</h2><p class="sub">Enter your email and password</p>';
+              showOverlay();
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          if (typeof showAuthTabs === 'function') showAuthTabs('login');
+        }
+      };
+      window.openStaffOrDashboard = window.openAuthModal;
+    } catch (e) { console.warn('Feel It patches', e); }
   }
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js';
-  s.onload = function(){ applyPatches(); setTimeout(applyPatches, 1500); };
-  s.onerror = function(){ console.error('Could not load Feel It core script'); };
-  document.head.appendChild(s);
+
+  fetch('https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@763d7cd2/script.js')
+    .then(function(r){ return r.text(); })
+    .then(function(code){
+      var s = document.createElement('script');
+      s.textContent = code;
+      document.head.appendChild(s);
+      applyPatches();
+      setTimeout(applyPatches, 800);
+      setTimeout(applyPatches, 2500);
+    })
+    .catch(function(err){
+      console.error('Core script load failed', err);
+    });
 })();
