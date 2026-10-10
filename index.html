@@ -19,27 +19,25 @@
       html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
       html = html.replace(/id="tourGrid"/g, 'id="toursGrid"');
 
-      if (html.indexOf('feelit-cards.css') < 0) {
+      if (html.indexOf('feelit-cards.css') < 0 && html.indexOf('style.css') >= 0) {
         html = html.replace(
-          'href="style.css"',
-          'href="style.css">' + '<' + 'link rel="stylesheet" href="feelit-cards.css"'
+          /href="style\.css"\s*>/,
+          'href="style.css"><link rel="stylesheet" href="feelit-cards.css">'
         );
       }
       if (html.indexOf('ride.html') < 0) {
         html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
       }
-
-      // Ensure auth refine + fix load after hero
-      if (html.indexOf('feelit-auth-refine.js') < 0) {
-        html = html.replace(
-          'src="feelit-preloader.js"',
-          'src="feelit-auth-refine.js"></script><script src="feelit-preloader.js"'
-        );
-      }
       if (html.indexOf('feelit-fix.js') < 0) {
         html = html.replace(
           'src="feelit-hero.js"',
           'src="feelit-fix.js"></script><script src="feelit-hero.js"'
+        );
+      }
+      if (html.indexOf('feelit-auth-refine.js') < 0) {
+        html = html.replace(
+          'src="feelit-preloader.js"',
+          'src="feelit-auth-refine.js"></script><script src="feelit-preloader.js"'
         );
       }
 
@@ -48,8 +46,7 @@
       document.close();
     } catch (e) {
       document.body.innerHTML =
-        '<p style="font-family:system-ui;padding:40px">Could not load site. ' +
-        '<a href="ops.html">Ops</a> · ' + e + '</p>';
+        '<p style="font-family:system-ui;padding:40px">Could not load site. <a href="ops.html">Ops</a></p>';
     }
   })();
   </script>
