@@ -8,13 +8,13 @@
   (async function(){
     try {
       var urls = [
-        'index-full.html?v=2',
+        'index-full.html?v=3',
         'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html'
       ];
       var html = null;
       for (var i = 0; i < urls.length; i++) {
         try {
-          var r = await fetch(urls[i]);
+          var r = await fetch(urls[i], { cache: 'no-store' });
           if (r.ok) {
             html = await r.text();
             if (html && html.length > 5000) break;
@@ -22,11 +22,20 @@
         } catch (e) {}
       }
       if (!html || html.length < 5000) {
-        document.body.innerHTML = '<p style="font-family:system-ui;padding:40px">Could not load site. Open <a href="ops.html">Ops</a> or hard-refresh.</p>';
+        document.body.innerHTML = '<p style="font-family:system-ui;padding:40px">Could not load site. Try <a href="ops.html">Ops</a> or hard-refresh.</p>';
         return;
       }
       html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi, '');
       html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
+      if (html.indexOf('feelit-weather.js') < 0) {
+        html = html.replace(
+          'feelit-hero.js',
+          'feelit-config.js"></script><script src="feelit-weather.js"></script><script src="feelit-hero.js'
+        );
+      }
+      if (html.indexOf('ride.html') < 0) {
+        html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
+      }
       document.open();
       document.write(html);
       document.close();
