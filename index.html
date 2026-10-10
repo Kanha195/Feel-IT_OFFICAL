@@ -2,57 +2,117 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <link rel="icon" type="image/png" href="assets/unnamed.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feel It | Guided Bike Tours in Nepal</title>
-  <link rel="icon" type="image/png" href="assets/unnamed.png">
-  <script>
-  (async function () {
-    try {
-      var r = await fetch(
-        'https://cdn.jsdelivr.net/gh/Kanha195/Feel-IT_OFFICAL@0a68dd40e0444ae028cc654dc5bc92c5ce377aeb/index.html',
-        { cache: 'no-store' }
-      );
-      var html = await r.text();
-      if (!html || html.length < 5000) throw new Error('shell empty');
-
-      html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/gi, '');
-      html = html.replace(/<!-- Basic CSP:[^>]*-->/gi, '');
-      html = html.replace(/id="tourGrid"/g, 'id="toursGrid"');
-
-      if (html.indexOf('feelit-cards.css') < 0 && html.indexOf('style.css') >= 0) {
-        html = html.replace(
-          /href="style\.css"\s*>/,
-          'href="style.css"><link rel="stylesheet" href="feelit-cards.css">'
-        );
-      }
-      if (html.indexOf('ride.html') < 0) {
-        html = html.replace('>Gallery</a>', '>Gallery</a><a href="ride.html">My Ride</a>');
-      }
-      var endScript = '<' + '/script>';
-      if (html.indexOf('feelit-fix.js') < 0) {
-        html = html.replace(
-          'src="feelit-hero.js"',
-          'src="feelit-fix.js">' + endScript + '<script src="feelit-hero.js"'
-        );
-      }
-      if (html.indexOf('feelit-auth-refine.js') < 0) {
-        html = html.replace(
-          'src="feelit-preloader.js"',
-          'src="feelit-auth-refine.js">' + endScript + '<script src="feelit-preloader.js"'
-        );
-      }
-
-      document.open();
-      document.write(html);
-      document.close();
-    } catch (e) {
-      document.body.innerHTML =
-        '<p style="font-family:system-ui;padding:40px">Could not load site. <a href="ops.html">Ops</a></p>';
-    }
-  })();
-  </script>
+  <meta name="description" content="Feel It pairs solo travelers with local riders who know Nepal's high roads. Guided motorbike tours across Pokhara, the Kathmandu Valley and Upper Mustang.">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="feelit-cards.css">
 </head>
 <body>
-  <p style="font-family:system-ui;padding:24px;color:#666">Loading Feel It…</p>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="index.html">
+      <img src="assets/unnamed.png" alt="Feel It" class="brand-logo" width="40" height="40" style="border-radius:8px;object-fit:cover">
+      <div class="brand-text"><span class="display">Feel It</span><span>Nepal bike tours</span></div>
+    </a>
+    <nav class="nav-links">
+      <a href="#tours">Tours</a>
+      <a href="#hidden">Hidden Gems</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="ride.html">My Ride</a>
+      <button type="button" class="btn btn-outline" id="authNavBtn" onclick="typeof openAuthModal==='function'&&openAuthModal()">Login / Account</button>
+    </nav>
+    <button type="button" class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#tours">Tours</a>
+    <a href="#hidden">Hidden Gems</a>
+    <a href="gallery.html">Gallery</a>
+    <a href="ride.html">My Ride</a>
+    <a href="#" id="mobileAuthLink" onclick="typeof openAuthModal==='function'&&openAuthModal();return false;">Login / Account</a>
+  </div>
+</header>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">Guided rides · Nepal</div>
+    <h1>Feel the road. Not the brochure.</h1>
+    <p>Local captains. Real mountain roads. Dual pricing for visitors and residents.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#tours">See tours</a>
+      <a class="btn btn-outline" href="#custom">Build your ride</a>
+    </div>
+  </div>
+</section>
+<section id="tours">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Featured Bike Tours</h2>
+      <p>Popular routes with local guides. Hotel and food optional at checkout.</p>
+    </div>
+    <div class="grid" id="toursGrid"></div>
+  </div>
+</section>
+<section id="hidden">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Hidden Gems</h2>
+      <p>Shorter rides and quiet ridges.</p>
+    </div>
+    <div class="grid" id="hiddenGemsGrid"></div>
+  </div>
+</section>
+<section id="custom">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Build your own ride</h2>
+      <p>Search a place, set start and end, then request a quote.</p>
+    </div>
+    <div class="form-card" style="max-width:720px">
+      <div class="field"><label>Search place</label><input id="routeSearch" placeholder="e.g. Pokhara, Nagarkot" autocomplete="off"></div>
+      <div id="routeSearchResults"></div>
+      <div id="tourMap" style="height:320px;margin:16px 0;border-radius:8px;background:#0d1320"></div>
+      <div class="row-2">
+        <div class="field"><label>Start</label><input id="routeStart" readonly></div>
+        <div class="field"><label>End</label><input id="routeEnd" readonly></div>
+      </div>
+      <button type="button" class="btn btn-primary" id="requestCustomRide">Request custom ride</button>
+    </div>
+  </div>
+</section>
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="display">Feel It</div>
+      <p>Basundhara, Kathmandu · Guided motorbike journeys across Nepal.</p>
+      <p><a href="mailto:feelitofficial@gmail.com">feelitofficial@gmail.com</a> · <a href="tel:+9779808747221">+977-9808747221</a></p>
+    </div>
+    <div>
+      <p><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+      <p>© 2026 Feel It Nepal</p>
+    </div>
+  </div>
+</footer>
+<div id="overlay" class="overlay" style="display:none" onclick="if(event.target===this)typeof closeOverlay==='function'&&closeOverlay()">
+  <div class="modal" id="modalContent"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="script.js"></script>
+<script src="feelit-extras.js"></script>
+<script src="feelit-fix.js"></script>
+<script src="feelit-hero.js"></script>
+<script src="feelit-auth-refine.js"></script>
+<script src="feelit-preloader.js"></script>
+<script>
+document.getElementById('menuBtn')&&document.getElementById('menuBtn').addEventListener('click',function(){
+  var m=document.getElementById('mobileMenu'); if(m) m.classList.toggle('open');
+});
+</script>
 </body>
 </html>
